@@ -1,0 +1,58 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ build_test ]
+  pull_request:
+    branches: [ build_test ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    # Runs a single command using the runners shell
+    - name: Run a one-line script
+      run: echo Hello, world!
+
+    # Runs a set of commands using the runners shell
+    - name: Run a multi-line script
+      run: |
+        echo Test1...
+        ls
+        sudo apt-get install build-essential
+        sudo apt-get install gcc-multilib g++-multilib
+        
+        echo Test2...
+        echo $GITHUB_WORKSPACE
+        cd $GITHUB_WORKSPACE
+        cd ./mp/src
+        ls
+        ./createallprojects
+        
+        echo Test3...
+        ls
+        cd /
+        ls
+        sudo mkdir ./valve
+        cd ./valve
+        sudo wget http://media.steampowered.com/client/runtime/steam-runtime-sdk_latest.tar.xz
+        ls
+        sudo tar xvf ./steam-runtime-sdk_latest.tar.xz
+        ls
+        sudo mv ./steam-runtime-sdk_* ./steam-runtime
+        ls
+        sudo chown <USER>:<GROUP> * -R
+        cd ./steam-runtime
+        ls
