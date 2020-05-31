@@ -41,9 +41,15 @@ jobs:
         cd ./valve
         sudo wget http://media.steampowered.com/client/runtime/steam-runtime-sdk_latest.tar.xz
         sudo tar xvf ./steam-runtime-sdk_latest.tar.xz
+        pwd
+        ls
+        echo - - -
         sudo mv ./steam-runtime-sdk_2013-09-05 ./steam-runtime
         sudo chown <USER>:<GROUP> * -R
         cd ./steam-runtime
+        pwd
+        ls
+        echo - - -
         (echo 1; echo 1; echo Y; echo Y; echo Y) | ./setup.sh
         ./shell-i386.sh
         
