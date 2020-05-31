@@ -45,7 +45,7 @@ jobs:
         ls
         echo - - -
         sudo mv steam-runtime-sdk_2013-09-05 steam-runtime
-        sudo chown <USER>:<GROUP> * -R
+        sudo chown -R $(id -u):$(id -g) ./steam-runtime
         cd ./steam-runtime
         pwd
         ls
