@@ -31,6 +31,7 @@ jobs:
       run: |
         echo Test1...
         ls
+        sudo apt-get update
         sudo apt-get install build-essential
         sudo apt-get install gcc-multilib g++-multilib
         
