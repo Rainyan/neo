@@ -12,21 +12,23 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runtime: [ linux-x64 ]
 
+    runs-on: ${{ matrix.os }}
+    
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-
+      
     - name: Update build environment
       run: |
         sudo apt-get update
         sudo apt-get install build-essential gcc gcc-multilib g++-multilib make build-essential linux-headers-$(uname -r)
-        
+          
     - name: Install and setup Steam runtime SDK tools
       run: |
         cd /
