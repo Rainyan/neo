@@ -16,6 +16,9 @@ jobs:
     strategy:
       matrix:
         runtime: [ linux-x64 ]
+        include:
+          - runtime: linux-x64
+            os: ubuntu-latest
 
     runs-on: ${{ matrix.os }}
     
@@ -39,7 +42,7 @@ jobs:
         sudo mv steam-runtime-sdk_2013-09-05 steam-runtime
         sudo chown -R $(id -u):$(id -g) ./steam-runtime
         cd ./steam-runtime
-        (echo 1; echo 1; echo Y; echo Y; echo Y) | ./setup.sh
+        (echo 3; echo 1; echo Y; echo Y; echo Y) | ./setup.sh
         ./shell-i386.sh
         
         echo Testing /valve dirs...
