@@ -44,8 +44,7 @@ jobs:
         (echo 1; echo 1; echo Y; echo Y; echo Y) | ./setup.sh
         ./shell-i386.sh
         
-        cd $GITHUB_WORKSPACE
-        ./mp/src/createallprojects
-        
+        cd $GITHUB_WORKSPACE/mp/src
+        ./createallprojects
         make -f everything.mak
         
