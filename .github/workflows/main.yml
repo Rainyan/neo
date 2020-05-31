@@ -29,31 +29,23 @@ jobs:
     # Runs a set of commands using the runners shell
     - name: Run a multi-line script
       run: |
-        echo Test1...
-        ls
         sudo apt-get update
         sudo apt-get install build-essential
         sudo apt-get install gcc-multilib g++-multilib
         
-        echo Test2...
-        echo $GITHUB_WORKSPACE
         cd $GITHUB_WORKSPACE
-        cd ./mp/src
-        ls
-        ./createallprojects
+        ./mp/src/createallprojects
         
-        echo Test3...
-        ls
         cd /
-        ls
         sudo mkdir ./valve
         cd ./valve
         sudo wget http://media.steampowered.com/client/runtime/steam-runtime-sdk_latest.tar.xz
-        ls
         sudo tar xvf ./steam-runtime-sdk_latest.tar.xz
-        ls
-        sudo mv ./steam-runtime-sdk_* ./steam-runtime
-        ls
+        for f in ./steam-runtime-*; do
+            sudo mv f ./steam-runtime
+        done
         sudo chown <USER>:<GROUP> * -R
         cd ./steam-runtime
-        ls
+        (echo 1; echo 1; echo Y; echo Y; echo Y) | ./setup.sh
+        ./shell-i386.sh
+        
