@@ -41,8 +41,8 @@ jobs:
         cd ./valve
         sudo wget http://media.steampowered.com/client/runtime/steam-runtime-sdk_latest.tar.xz
         sudo tar xvf ./steam-runtime-sdk_latest.tar.xz
-        for f in ./steam-runtime-*; do
-            sudo mv f ./steam-runtime
+        for directory in ./steam-runtime-*; do
+            sudo mv $directory ./steam-runtime
         done
         sudo chown <USER>:<GROUP> * -R
         cd ./steam-runtime
