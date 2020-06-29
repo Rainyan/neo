@@ -80,10 +80,10 @@ jobs:
         $installerPath = $pwd.Path + "\${unZipDir}"
         $logFile = "msiexec.log"
         echo "Installer full path: '${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}'"
-        echo "Log full path: '${installerPath}\${$logFile}'
-        echo "Msiexec cmd: msiexec /i '${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}' /norestart /passive /l*v '${installerPath}\${$logFile}'"
-        msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${$logFile}"
+        echo "Log full path: '${installerPath}\${logFile}'
+        echo "Msiexec cmd: msiexec /i '${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}' /norestart /passive /l*v '${installerPath}\${logFile}'"
+        msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${logFile}"
         ls
         echo "Install log:"
-        cat "${installerPath}\${$logFile}"
+        cat "${installerPath}\${logFile}"
 
