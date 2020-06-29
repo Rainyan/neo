@@ -28,7 +28,7 @@ jobs:
         SPEECH_API_SDK_URL: 'https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe'
         SPEECH_API_SDK_EXE: 'SpeechSDK51.exe'
       run: |
-        Invoke-WebRequest $SPEECH_API_SDK_URL -OutFile .\$SPEECH_API_SDK_EXE
+        Invoke-WebRequest $env:SPEECH_API_SDK_URL -OutFile .\$env:SPEECH_API_SDK_EXE
 
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
@@ -49,7 +49,7 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
 
-        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem .\$SPEECH_API_SDK_EXE | Get-AuthenticodeSignature)
+        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem .\$env:SPEECH_API_SDK_EXE | Get-AuthenticodeSignature)
 
         # Need to match this digital signature.
         $sigRequirements = @{
@@ -67,5 +67,5 @@ jobs:
             throw "Digital signature mismatched value of $reqName (was '$sigValue' but expected '$reqValue')"
           }
         }
-        echo "File $SPEECH_API_SDK_EXE passed digital signature checks."
+        echo "File $env:SPEECH_API_SDK_EXE passed digital signature checks."
 
