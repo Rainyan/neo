@@ -25,10 +25,12 @@ jobs:
       
     - name: Install Microsoft Speech SDK 5.1
       env:
-        SPEECH_API_SDK_URL: 'https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe'
-        SPEECH_API_SDK_EXE: 'SpeechSDK51.exe'
+        SPEECH_SDK_URL: 'https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe'
+        SPEECH_SDK_NAME: 'SpeechSDK51'
+        SPEECH_SDK_CONTAINED_INSTALLER: 'Microsoft Speech SDK 5.1.msi'
       run: |
-        Invoke-WebRequest $env:SPEECH_API_SDK_URL -OutFile .\$env:SPEECH_API_SDK_EXE
+        echo "Downloading ${env:SPEECH_SDK_NAME}..."
+        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile .\${env:SPEECH_SDK_NAME}.exe
 
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
@@ -49,7 +51,7 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
 
-        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem .\$env:SPEECH_API_SDK_EXE | Get-AuthenticodeSignature)
+        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem .\${env:SPEECH_SDK_NAME}.exe | Get-AuthenticodeSignature)
 
         # Need to match this digital signature.
         $sigRequirements = @{
@@ -67,7 +69,13 @@ jobs:
             throw "Digital signature mismatched value of $reqName (was '$sigValue' but expected '$reqValue')"
           }
         }
-        echo "File $env:SPEECH_API_SDK_EXE passed digital signature checks."
+        echo "File ${env:SPEECH_SDK_NAME} passed digital signature checks."
         
-        choco --yes install .\$env:SPEECH_API_SDK_EXE
+        echo "Unarchiving ${env:SPEECH_SDK_NAME} installer..."
+        Rename-Item -Path .\${env:SPEECH_SDK_NAME}.exe -NewName .\${env:SPEECH_SDK_NAME}.zip
+        $unZipPath = ".\${env:SPEECH_SDK_NAME}_files"
+        Expand-Archive -Path .\${env:SPEECH_SDK_NAME}.zip -DestinationPath ${unZipPath}
+        
+        echo "Installing ${env:SPEECH_SDK_NAME}..."
+        choco --yes install ".\${unZipPath}\${SPEECH_SDK_CONTAINED_INSTALLER}"
 
