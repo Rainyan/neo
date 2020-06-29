@@ -1056,9 +1056,16 @@ void CGameMovement::CheckParameters( void )
 		}
 	}
 
-	if ( player->GetFlags() & FL_FROZEN ||
-		 player->GetFlags() & FL_ONTRAIN || 
-		 IsDead() )
+#ifdef NEO
+	if (player->GetFlags() & FL_FROZEN ||
+		player->GetFlags() & FL_ONTRAIN ||
+		IsDead() ||
+		static_cast<CNEO_Player*>(player)->GetNeoFlags() & NEO_FL_FREEZETIME)
+#else
+	if (player->GetFlags() & FL_FROZEN ||
+		player->GetFlags() & FL_ONTRAIN ||
+		IsDead())
+#endif
 	{
 		mv->m_flForwardMove = 0;
 		mv->m_flSideMove    = 0;
@@ -4739,7 +4746,7 @@ void CGameMovement::PlayerMove( void )
 	UpdateDuckJumpEyeOffset();
 	Duck();
 
-	// Don't run ladder code if dead on on a train
+	// Don't run ladder code if dead or on a train
 	if ( !player->pl.deadflag && !(player->GetFlags() & FL_ONTRAIN) )
 	{
 		// If was not on a ladder now, but was on one before, 

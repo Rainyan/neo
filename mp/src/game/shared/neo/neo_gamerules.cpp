@@ -21,6 +21,9 @@
 	#include "player_resource.h"
 #endif
 
+ConVar mp_neo_preround_freeze_time("mp_neo_preround_freeze_time", "10", FCVAR_REPLICATED, "The pre-round freeze time, in seconds.", true, 0.0, false, 0);
+ConVar mp_neo_latespawn_max_time("mp_neo_latespawn_max_time", "15", FCVAR_REPLICATED, "How many seconds late are players still allowed to spawn.", true, 0.0, false, 0);
+
 REGISTER_GAMERULES_CLASS( CNEORules );
 
 BEGIN_NETWORK_TABLE_NOBASE( CNEORules, DT_NEORules )
@@ -28,9 +31,13 @@ BEGIN_NETWORK_TABLE_NOBASE( CNEORules, DT_NEORules )
 #ifdef CLIENT_DLL
 	RecvPropFloat(RECVINFO(m_flNeoNextRoundStartTime)),
 	RecvPropFloat(RECVINFO(m_flNeoRoundStartTime)),
+	RecvPropInt(RECVINFO(m_nRoundStatus)),
+	RecvPropInt(RECVINFO(m_iRoundNumber)),
 #else
 	SendPropFloat(SENDINFO(m_flNeoNextRoundStartTime)),
 	SendPropFloat(SENDINFO(m_flNeoRoundStartTime)),
+	SendPropInt(SENDINFO(m_nRoundStatus)),
+	SendPropInt(SENDINFO(m_iRoundNumber)),
 #endif
 END_NETWORK_TABLE()
 
@@ -85,8 +92,8 @@ static NEOViewVectors g_NEOViewVectors(
 
 	BEGIN_SEND_TABLE(CNEOGameRulesProxy, DT_NEOGameRulesProxy)
 		SendPropDataTable("neo_gamerules_data", 0,
-		&REFERENCE_SEND_TABLE(DT_NEORules),
-		SendProxy_NEORules)
+			&REFERENCE_SEND_TABLE(DT_NEORules),
+			SendProxy_NEORules)
 		END_SEND_TABLE()
 #endif
 
@@ -102,6 +109,8 @@ static NEOViewVectors g_NEOViewVectors(
 		// convert a velocity in ft/sec and a mass in grains to an impulse in kg in/s
 #define BULLET_IMPULSE(grains, ftpersec)	((ftpersec)*12*BULLET_MASS_GRAINS_TO_KG(grains)*BULLET_IMPULSE_EXAGGERATION)
 
+
+ConVar neo_score_limit("neo_score_limit", "7", FCVAR_REPLICATED, "Neo score limit.", true, 0.0f, true, 99.0f);
 
 ConVar neo_round_timelimit("neo_round_timelimit", "2.75", FCVAR_REPLICATED, "Neo round timelimit, in minutes.",
 	true, 0.0f, false, 600.0f);
@@ -201,7 +210,9 @@ static inline void FireLegacyEvent_NeoRoundEnd()
 
 CNEORules::CNEORules()
 {
-#ifdef GAME_DLL	
+#ifdef GAME_DLL
+	m_bNextClientIsFakeClient = false;
+
 	Q_strncpy(g_Teams[TEAM_JINRAI]->m_szTeamname.GetForModify(),
 		TEAM_STR_JINRAI, MAX_TEAM_NAME_LENGTH);
 	
@@ -218,11 +229,12 @@ CNEORules::CNEORules()
 		}
 	}
 
-	m_bFirstRestartIsDone = false;
 	ResetGhostCapPoints();
 #endif
 
 	m_flNeoRoundStartTime = m_flNeoNextRoundStartTime = 0;
+	SetRoundStatus(NeoRoundStatus::Idle);
+	m_iRoundNumber = 0;
 
 	ListenForGameEvent("round_start");
 }
@@ -337,6 +349,11 @@ extern ConVar mp_chattime;
 #ifdef GAME_DLL
 void CNEORules::ChangeLevel(void)
 {
+	SetRoundStatus(NeoRoundStatus::Idle);
+	m_iRoundNumber = 0;
+	m_flNeoRoundStartTime = 0;
+	m_flNeoNextRoundStartTime = 0;
+
 	BaseClass::ChangeLevel();
 }
 #endif
@@ -346,12 +363,13 @@ bool CNEORules::CheckGameOver(void)
 	// Note that this changes the level as side effect
 	const bool gameOver = BaseClass::CheckGameOver();
 
-#ifdef GAME_DLL
 	if (gameOver)
 	{
-		m_bFirstRestartIsDone = false;
+		SetRoundStatus(NeoRoundStatus::Idle);
+		m_iRoundNumber = 0;
+		m_flNeoRoundStartTime = 0;
+		m_flNeoNextRoundStartTime = 0;
 	}
-#endif
 
 	return gameOver;
 }
@@ -359,6 +377,12 @@ bool CNEORules::CheckGameOver(void)
 void CNEORules::Think(void)
 {
 #ifdef GAME_DLL
+	if (m_nRoundStatus == NeoRoundStatus::Idle && gpGlobals->curtime > m_flNeoNextRoundStartTime)
+	{
+		StartNextRound();
+		return;
+	}
+
 	if (g_fGameOver)   // someone else quit the game already
 	{
 		// check to see if we should change levels now
@@ -373,18 +397,31 @@ void CNEORules::Think(void)
 
 		return;
 	}
+
+	if (neo_score_limit.GetInt() != 0)
+	{
+#ifdef DEBUG
+		float neoScoreLimitMin = -1.0f;
+		AssertOnce(neo_score_limit.GetMin(neoScoreLimitMin));
+		AssertOnce(neoScoreLimitMin >= 0);
+#endif
+		COMPILE_TIME_ASSERT((TEAM_JINRAI < TEAM_NSF) && (TEAM_JINRAI == (TEAM_NSF - 1)));
+		for (int team = TEAM_JINRAI; team <= TEAM_NSF; ++team)
+		{
+			if (GetGlobalTeam(team)->GetRoundsWon() >= neo_score_limit.GetInt())
+			{
+				UTIL_CenterPrintAll(team == TEAM_JINRAI ? "JINRAI WINS THE MATCH\n" : "NSF WINS THE MATCH\n");
+				SetRoundStatus(NeoRoundStatus::PostRound);
+				GoToIntermission();
+				return;
+			}
+		}
+	}
 #endif
 
 	BaseClass::Think();
 
 #ifdef GAME_DLL
-	if (!m_bFirstRestartIsDone)
-	{
-		m_bFirstRestartIsDone = !m_bFirstRestartIsDone;
-		RestartGame();
-		return;
-	}
-
 	if (IsRoundOver())
 	{
 		// If the next round was not scheduled yet
@@ -429,8 +466,7 @@ void CNEORules::Think(void)
 			}
 
 			// And then announce team victory
-			// NEO TODO (Rain): figure out the win reasons for Neo
-			SetWinningTeam(captorTeam, 0, false, true, false, false);
+			SetWinningTeam(captorTeam, NEO_VICTORY_GHOST_CAPTURE, false, true, false, false);
 
 			for (int i = 1; i <= gpGlobals->maxClients; i++)
 			{
@@ -449,6 +485,45 @@ void CNEORules::Think(void)
 			}
 
 			break;
+		}
+	}
+
+	if (m_nRoundStatus == NeoRoundStatus::PreRoundFreeze)
+	{
+		if (IsRoundOver())
+		{
+			SetRoundStatus(NeoRoundStatus::PostRound);
+		}
+		else
+		{
+			if (gpGlobals->curtime > m_flNeoRoundStartTime + mp_neo_preround_freeze_time.GetFloat())
+			{
+				SetRoundStatus(NeoRoundStatus::RoundLive);
+			}
+		}
+	}
+	else if (m_nRoundStatus != NeoRoundStatus::RoundLive)
+	{
+		if (!IsRoundOver())
+		{
+			if (GetGlobalTeam(TEAM_JINRAI)->GetAliveMembers() > 0 && GetGlobalTeam(TEAM_NSF)->GetAliveMembers() > 0)
+			{
+				SetRoundStatus(NeoRoundStatus::RoundLive);
+			}
+		}
+	}
+	else
+	{
+		if (m_nRoundStatus == NeoRoundStatus::RoundLive)
+		{
+			COMPILE_TIME_ASSERT(TEAM_JINRAI == 2 && TEAM_NSF == 3);
+			for (int team = TEAM_JINRAI; team <= TEAM_NSF; ++team)
+			{
+				if (GetGlobalTeam(team)->GetAliveMembers() == 0)
+				{
+					SetWinningTeam(GetOpposingTeam(team), NEO_VICTORY_TEAM_ELIMINATION, false, true, false, false);
+				}
+			}
 		}
 	}
 #endif
@@ -491,7 +566,7 @@ void CNEORules::AwardRankUp(CNEO_Player *pClient)
 // Return remaining time in seconds. Zero means there is no time limit.
 float CNEORules::GetRoundRemainingTime()
 {
-	if (neo_round_timelimit.GetFloat() == 0)
+	if (neo_round_timelimit.GetFloat() == 0 || m_nRoundStatus == NeoRoundStatus::Idle)
 	{
 		return 0;
 	}
@@ -656,10 +731,25 @@ static inline void SpawnTheGhost()
 
 void CNEORules::StartNextRound()
 {
+	if (GetGlobalTeam(TEAM_JINRAI)->GetNumPlayers() == 0 || GetGlobalTeam(TEAM_NSF)->GetNumPlayers() == 0)
+	{
+		UTIL_CenterPrintAll("Waiting for players on both teams.\n"); // NEO TODO (Rain): actual message
+		SetRoundStatus(NeoRoundStatus::Idle);
+		m_flNeoNextRoundStartTime = gpGlobals->curtime + 10.0f;
+		return;
+	}
+
 	m_flNeoRoundStartTime = gpGlobals->curtime;
 	m_flNeoNextRoundStartTime = 0;
 
 	CleanUpMap();
+
+	SetRoundStatus(NeoRoundStatus::PreRoundFreeze);
+
+	char RoundMsg[11];
+	COMPILE_TIME_ASSERT(sizeof(RoundMsg) == sizeof("Round 99\n\0"));
+	V_sprintf_safe(RoundMsg, "Round %d\n", Min(99, ++m_iRoundNumber));
+	UTIL_CenterPrintAll(RoundMsg);
 
 	for (int i = 1; i <= gpGlobals->maxClients; i++)
 	{
@@ -676,7 +766,11 @@ void CNEORules::StartNextRound()
 		}
 		pPlayer->RemoveAllItems(true);
 		respawn(pPlayer, false);
-		pPlayer->Reset();
+		if (gpGlobals->curtime < m_flNeoRoundStartTime + mp_neo_preround_freeze_time.GetFloat())
+		{
+			pPlayer->AddFlag(FL_GODMODE);
+			pPlayer->AddNeoFlag(NEO_FL_FREEZETIME);
+		}
 
 		pPlayer->m_bInAim = false;
 		pPlayer->m_bInThermOpticCamo = false;
@@ -708,7 +802,7 @@ void CNEORules::StartNextRound()
 	DevMsg("New round start here!\n");
 }
 
-bool CNEORules::IsRoundOver()
+bool CNEORules::IsRoundOver() const
 {
 	// We don't want to start preparing for a new round
 	// if the game has ended for the current map.
@@ -778,8 +872,10 @@ float CNEORules::GetMapRemainingTime()
 }
 
 #ifndef CLIENT_DLL
+#if(0)
 static inline void RemoveGhosts()
 {
+	Assert(false);
 	return;
 
 	CBaseEntity *pEnt = gEntList.FirstEnt();
@@ -803,6 +899,7 @@ static inline void RemoveGhosts()
 		pEnt = gEntList.NextEnt(pEnt);
 	}
 }
+#endif
 
 extern bool FindInList(const char **pStrings, const char *pToFind);
 
@@ -912,7 +1009,7 @@ void CNEORules::CheckRestartGame()
 	BaseClass::CheckRestartGame();
 }
 
-inline void CNEORules::ResetGhostCapPoints()
+void CNEORules::ResetGhostCapPoints()
 {
 	m_pGhostCaps.Purge();
 
@@ -997,20 +1094,21 @@ void CNEORules::RestartGame()
 
 	CTeam *pJinrai = GetGlobalTeam(TEAM_JINRAI);
 	CTeam *pNSF = GetGlobalTeam(TEAM_NSF);
+	Assert(pJinrai && pNSF);
 
-	if (pJinrai)
-	{
-		pJinrai->SetScore(0);
-	}
-
-	if (pNSF)
-	{
-		pNSF->SetScore(0);
-	}
+	pJinrai->SetScore(0);
+	pJinrai->SetRoundsWon(0);
+	pNSF->SetScore(0);
+	pNSF->SetRoundsWon(0);
 
 	m_flIntermissionEndTime = 0;
 	m_flRestartGameTime = 0.0;
 	m_bCompleteReset = false;
+	m_iRoundNumber = 0;
+	m_flNeoNextRoundStartTime = FLT_MAX;
+	m_flNeoRoundStartTime = FLT_MAX;
+
+	SetRoundStatus(NeoRoundStatus::Idle);
 
 	IGameEvent * event = gameeventmanager->CreateEvent("round_start");
 	if (event)
@@ -1086,57 +1184,10 @@ void CNEORules::SetWinningTeam(int team, int iWinReason, bool bForceMapReset, bo
 		return;
 	}
 
-	char victoryMsg[128];
+	SetRoundStatus(NeoRoundStatus::PostRound);
 
-	if (iWinReason == NEO_VICTORY_GHOST_CAPTURE)
-	{
-		V_sprintf_safe(victoryMsg, "Team %s wins by capturing the ghost!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
-	}
-	else if (iWinReason == NEO_VICTORY_TEAM_ELIMINATION)
-	{
-		V_sprintf_safe(victoryMsg, "Team %s wins by eliminating the other team!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
-	}
-	else if (iWinReason == NEO_VICTORY_TIMEOUT_WIN_BY_NUMBERS)
-	{
-		V_sprintf_safe(victoryMsg, "Team %s wins by numbers!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
-	}
-	else if (iWinReason == NEO_VICTORY_FORFEIT)
-	{
-		V_sprintf_safe(victoryMsg, "Team %s wins by forfeit!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
-	}
-	else if (iWinReason == NEO_VICTORY_STALEMATE)
-	{
-		V_sprintf_safe(victoryMsg, "TIE\n");
-	}
-	else
-	{
-		V_sprintf_safe(victoryMsg, "Unknown Neotokyo victory reason %i\n", iWinReason);
-		Warning("Unknown Neotokyo victory reason %i", iWinReason);
-		Assert(false);
-	}
+	auto winningTeam = GetGlobalTeam(team);
 
-	EmitSound_t soundParams;
-	soundParams.m_nChannel = CHAN_VOICE;
-	// Referencing sounds directly because we can't override the soundscript volume level otherwise
-	soundParams.m_pSoundName = (team == TEAM_JINRAI) ? "gameplay/jinrai.mp3" : (team == TEAM_NSF) ? "gameplay/nsf.mp3" : "gameplay/draw.mp3";
-	soundParams.m_bWarnOnDirectWaveReference = false;
-
-	CRecipientFilter soundFilter;
-	soundFilter.AddAllPlayers();
-
-	for (int i = 1; i <= gpGlobals->maxClients; i++)
-	{
-		auto player = UTIL_PlayerByIndex(i);
-		if (player)
-		{
-			engine->ClientPrintf(player->edict(), victoryMsg);
-
-			float jingleVolume = atof(engine->GetClientConVarValue(i, snd_victory_volume.GetName()));
-			soundParams.m_flVolume = jingleVolume;
-			player->EmitSound(soundFilter, i, soundParams);
-		}
-	}
-	
 	if (bForceMapReset)
 	{
 		RestartGame();
@@ -1147,9 +1198,85 @@ void CNEORules::SetWinningTeam(int team, int iWinReason, bool bForceMapReset, bo
 
 		if (!bDontAddScore)
 		{
-			auto winningTeam = GetGlobalTeam(team);
-			winningTeam->AddScore(1);
+			winningTeam->IncrementRoundsWon();
 		}
+	}
+
+	char victoryMsg[128];
+	bool gotMatchWinner = false;
+
+	if (!bForceMapReset && neo_score_limit.GetInt() != 0)
+	{
+#ifdef DEBUG
+		float neoScoreLimitMin = -1.0f;
+		AssertOnce(neo_score_limit.GetMin(neoScoreLimitMin));
+		AssertOnce(neoScoreLimitMin >= 0);
+#endif
+		if (winningTeam->GetRoundsWon() >= neo_score_limit.GetInt())
+		{
+			V_sprintf_safe(victoryMsg, "Team %s wins the match!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
+			m_flNeoNextRoundStartTime = FLT_MAX;
+			gotMatchWinner = true;
+		}
+	}
+
+	if (!gotMatchWinner)
+	{
+		if (iWinReason == NEO_VICTORY_GHOST_CAPTURE)
+		{
+			V_sprintf_safe(victoryMsg, "Team %s wins by capturing the ghost!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
+		}
+		else if (iWinReason == NEO_VICTORY_TEAM_ELIMINATION)
+		{
+			V_sprintf_safe(victoryMsg, "Team %s wins by eliminating the other team!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
+		}
+		else if (iWinReason == NEO_VICTORY_TIMEOUT_WIN_BY_NUMBERS)
+		{
+			V_sprintf_safe(victoryMsg, "Team %s wins by numbers!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
+		}
+		else if (iWinReason == NEO_VICTORY_FORFEIT)
+		{
+			V_sprintf_safe(victoryMsg, "Team %s wins by forfeit!\n", (team == TEAM_JINRAI ? "Jinrai" : "NSF"));
+		}
+		else if (iWinReason == NEO_VICTORY_STALEMATE)
+		{
+			V_sprintf_safe(victoryMsg, "TIE\n");
+		}
+		else
+		{
+			V_sprintf_safe(victoryMsg, "Unknown Neotokyo victory reason %i\n", iWinReason);
+			Warning(victoryMsg);
+			Assert(false);
+		}
+	}
+
+	EmitSound_t soundParams;
+	soundParams.m_nChannel = CHAN_VOICE;
+	// Referencing sounds directly because we can't override the soundscript volume level otherwise
+	soundParams.m_pSoundName = (team == TEAM_JINRAI) ? "gameplay/jinrai.mp3" : (team == TEAM_NSF) ? "gameplay/nsf.mp3" : "gameplay/draw.mp3";
+	soundParams.m_bWarnOnDirectWaveReference = false;
+
+	CRecipientFilter soundFilter;
+	soundFilter.AddAllPlayers();
+	soundFilter.MakeReliable();
+
+	for (int i = 1; i <= gpGlobals->maxClients; ++i)
+	{
+		auto player = static_cast<CNEO_Player*>(UTIL_PlayerByIndex(i));
+		if (player && (!player->IsBot() || player->IsHLTV()))
+		{
+			engine->ClientPrintf(player->edict(), victoryMsg);
+			UTIL_ClientPrintAll((gotMatchWinner ? HUD_PRINTTALK : HUD_PRINTCENTER), victoryMsg);
+
+			float jingleVolume = atof(engine->GetClientConVarValue(i, snd_victory_volume.GetName()));
+			soundParams.m_flVolume = jingleVolume;
+			player->EmitSound(soundFilter, i, soundParams);
+		}
+	}
+
+	if (gotMatchWinner)
+	{
+		GoToIntermission();
 	}
 }
 #endif
@@ -1268,5 +1395,256 @@ const char* CNEORules::GetChatFormat(bool bTeamOnly, CBasePlayer* pPlayer)
 
 	Assert(false); // should never fall through the switch
 }
-
 #endif
+
+#ifdef GAME_DLL
+void CNEORules::DeathNotice(CBasePlayer* pVictim, const CTakeDamageInfo& info)
+{
+	// Work out what killed the player, and send a message to all clients about it
+	const char* killer_weapon_name = "world";		// by default, the player is killed by the world
+	int killer_ID = 0;
+
+	// Find the killer & the scorer
+	CBaseEntity* pInflictor = info.GetInflictor();
+	CBaseEntity* pKiller = info.GetAttacker();
+	CBasePlayer* pScorer = GetDeathScorer(pKiller, pInflictor);
+
+	bool isExplosiveKill = false;
+	bool isANeoDerivedWeapon = false;
+
+	// Custom kill type?
+	if (info.GetDamageCustom())
+	{
+		killer_weapon_name = GetDamageCustomString(info);
+		if (pScorer)
+		{
+			killer_ID = pScorer->GetUserID();
+		}
+	}
+	else
+	{
+		// Is the killer a client?
+		if (pScorer)
+		{
+			killer_ID = pScorer->GetUserID();
+
+			if (pInflictor)
+			{
+				if (pInflictor == pScorer)
+				{
+					// If the inflictor is the killer,  then it must be their current weapon doing the damage
+					if (pScorer->GetActiveWeapon())
+					{
+						killer_weapon_name = pScorer->GetActiveWeapon()->GetClassname();
+
+						auto neoWep = dynamic_cast<CNEOBaseCombatWeapon*>(pScorer->GetActiveWeapon());
+						if (neoWep)
+						{
+							isANeoDerivedWeapon = true;
+							isExplosiveKill = (neoWep->GetNeoWepBits() & NEO_WEP_EXPLOSIVE) ? true : false;
+						}
+					}
+				}
+				else
+				{
+					killer_weapon_name = pInflictor->GetClassname();  // it's just that easy
+				}
+			}
+		}
+		else
+		{
+			killer_weapon_name = pInflictor->GetClassname();
+		}
+
+		// strip the NPC_* or weapon_* from the inflictor's classname
+		if (strncmp(killer_weapon_name, "weapon_", 7) == 0)
+		{
+			killer_weapon_name += 7;
+		}
+		else if (strncmp(killer_weapon_name, "npc_", 4) == 0)
+		{
+			killer_weapon_name += 4;
+		}
+		else if (strncmp(killer_weapon_name, "func_", 5) == 0)
+		{
+			killer_weapon_name += 5;
+		}
+		else if (strstr(killer_weapon_name, "physics"))
+		{
+			killer_weapon_name = "physics";
+		}
+#if(0)
+		if (strcmp(killer_weapon_name, "prop_combine_ball") == 0)
+		{
+			killer_weapon_name = "combine_ball";
+		}
+		else if (strcmp(killer_weapon_name, "grenade_ar2") == 0)
+		{
+			killer_weapon_name = "smg1_grenade";
+		}
+		else if (strcmp(killer_weapon_name, "satchel") == 0 || strcmp(killer_weapon_name, "tripmine") == 0)
+		{
+			killer_weapon_name = "slam";
+		}
+#endif
+	}
+
+	IGameEvent* event = gameeventmanager->CreateEvent("player_death");
+	if (event)
+	{
+		event->SetInt("userid", pVictim->GetUserID());
+		event->SetInt("attacker", killer_ID);
+		event->SetString("weapon", killer_weapon_name);
+		event->SetInt("priority", 7);
+
+		// Which deathnotice icon to draw.
+		// This value needs to be the same as original NT for plugin compatibility.
+		short killfeed_icon;
+
+		// NEO HACK/TODO (Rain):
+		// Knife is not yet derived from nt base wep class, so we can't yet get its bits
+		if (!isANeoDerivedWeapon)
+		{
+			killfeed_icon = 0; // NEO TODO (Rain): set correct icon
+		}
+		else
+		{
+			// Suicide icon
+			if (pKiller == pVictim)
+			{
+				killfeed_icon = 0; // NEO TODO (Rain): set correct icon
+			}
+			// Explosion icon
+			else if (isExplosiveKill)
+			{
+				killfeed_icon = 0; // NEO TODO (Rain): set correct icon
+			}
+			// Headshot icon
+			else if (pVictim->LastHitGroup() == HITGROUP_HEAD)
+			{
+				killfeed_icon = NEO_DEATH_EVENT_ICON_HEADSHOT;
+			}
+			// Generic weapon kill icon
+			else
+			{
+				killfeed_icon = 0; // NEO TODO (Rain): set correct icon
+			}
+		}
+
+		event->SetInt("icon", killfeed_icon);
+
+		gameeventmanager->FireEvent(event);
+	}
+}
+#endif
+
+#ifdef GAME_DLL
+void CNEORules::ClientDisconnected(edict_t* pClient)
+{
+	auto pNeoPlayer = static_cast<CNEO_Player*>(CBaseEntity::Instance(pClient));
+	Assert(pNeoPlayer);
+	if (pNeoPlayer)
+	{
+		auto ghost = GetNeoWepWithBits(pNeoPlayer, NEO_WEP_GHOST);
+		if (ghost)
+		{
+			ghost->Drop(vec3_origin);
+			ghost->SetRemoveable(false);
+			pNeoPlayer->Weapon_Detach(ghost);
+		}
+	}
+
+	BaseClass::ClientDisconnected(pClient);
+}
+#endif
+
+#ifdef GAME_DLL
+bool CNEORules::FPlayerCanRespawn(CBasePlayer* pPlayer)
+{
+	auto gameType = GetGameType();
+
+	if (gameType == NEO_GAME_TYPE_TDM)
+	{
+		return true;
+	}
+	// Some unknown game mode
+	else if (gameType != NEO_GAME_TYPE_CTG)
+	{
+		Assert(false);
+		return true;
+	}
+
+	// Mode is CTG
+	auto jinrai = GetGlobalTeam(TEAM_JINRAI);
+	auto nsf = GetGlobalTeam(TEAM_NSF);
+
+	if (jinrai && nsf)
+	{
+		if (jinrai->GetNumPlayers() == 0 || nsf->GetNumPlayers() == 0)
+		{
+			return true;
+		}
+	}
+	else
+	{
+		Assert(false);
+	}
+
+	// Did we make it in time to spawn for this round?
+	if (GetRemainingPreRoundFreezeTime(false) + mp_neo_latespawn_max_time.GetFloat() > 0)
+	{
+		return true;
+	}
+
+	return false;
+}
+#endif
+
+void CNEORules::SetRoundStatus(NeoRoundStatus status)
+{
+	if (status == NeoRoundStatus::RoundLive)
+	{
+		for (int i = 1; i <= gpGlobals->maxClients; ++i)
+		{
+			auto player = static_cast<CNEO_Player*>(UTIL_PlayerByIndex(i));
+			if (player)
+			{
+				player->RemoveFlag(FL_GODMODE);
+				player->RemoveNeoFlag(NEO_FL_FREEZETIME);
+			}
+		}
+#ifdef GAME_DLL
+		UTIL_CenterPrintAll("GO GO GO\n"); // NEO TODO (Rain): correct phrase
+#endif
+	}
+
+	m_nRoundStatus = status;
+}
+
+const char* CNEORules::GetGameTypeName(void)
+{
+	switch (GetGameType())
+	{
+	case NEO_GAME_TYPE_TDM:
+		return "Team Deathmatch";
+	case NEO_GAME_TYPE_CTG:
+		return "Capture the Ghost";
+	default:
+		Assert(false);
+		return "Unknown";
+	}
+}
+
+float CNEORules::GetRemainingPreRoundFreezeTime(const bool clampToZero) const
+{
+	// If there's no time left, return 0 instead of a negative value.
+	if (clampToZero)
+	{
+		return Max(0.0f, m_flNeoRoundStartTime + mp_neo_preround_freeze_time.GetFloat() - gpGlobals->curtime);
+	}
+	// Or return negative value of how many seconds late we were.
+	else
+	{
+		return m_flNeoRoundStartTime + mp_neo_preround_freeze_time.GetFloat() - gpGlobals->curtime;
+	}
+}

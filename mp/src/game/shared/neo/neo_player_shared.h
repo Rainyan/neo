@@ -6,11 +6,6 @@
 
 #include "neo_predicted_viewmodel.h"
 
-#define NEO_WEAPON_PRIMARY_SLOT 0
-#define NEO_WEAPON_SECONDARY_SLOT 1
-#define NEO_WEAPON_MELEE_SLOT 2
-#define NEO_WEAPON_EXPLOSIVE_SLOT 3
-
 // All of these should be able to stack create even slower speeds (at least in original NT)
 #define NEO_SPRINT_MODIFIER 1.6
 #define NEO_SLOW_MODIFIER 0.75
@@ -109,6 +104,13 @@ COMPILE_TIME_ASSERT(NEO_ASSAULT_CROUCH_SPEED > NEO_SUPPORT_CROUCH_SPEED);
 #define NEO_IMPLEMENT_ACTTABLE(CNEOWepClass)
 #endif
 
+#define NEO_RECON_EYE_HEIGHT_STANDING 57.0
+#define NEO_RECON_EYE_HEIGHT_DUCKING 43.0
+#define NEO_ASSAULT_EYE_HEIGHT_STANDING 58.0
+#define NEO_ASSAULT_EYE_HEIGHT_DUCKING 44.0
+#define NEO_SUPPORT_EYE_HEIGHT_STANDING 60.0
+#define NEO_SUPPORT_EYE_HEIGHT_DUCKING 47.0
+
 #define HL2DM_DEFAULT_PLAYERMODEL_HEIGHT 74.0
 #define NEO_RECON_PLAYERMODEL_HEIGHT 66.0
 #define NEO_ASSAULT_PLAYERMODEL_HEIGHT 67.0
@@ -130,6 +132,10 @@ COMPILE_TIME_ASSERT(NEO_ASSAULT_CROUCH_SPEED > NEO_SUPPORT_CROUCH_SPEED);
 #define NEO_ASSAULT_MODEL_SCALE ((NEO_ASSAULT_PLAYERMODEL_HEIGHT / HL2DM_DEFAULT_PLAYERMODEL_HEIGHT) * NEO_HULL_TOLERANCE_SCALE)
 #define NEO_SUPPORT_MODEL_SCALE ((NEO_SUPPORT_PLAYERMODEL_HEIGHT / HL2DM_DEFAULT_PLAYERMODEL_HEIGHT) * NEO_HULL_TOLERANCE_SCALE)
 
+#define NEO_RECON_DAMAGE_MODIFIER 1.2f
+#define NEO_ASSAULT_DAMAGE_MODIFIER 1.0f
+#define NEO_SUPPORT_DAMAGE_MODIFIER 0.56f
+
 enum NeoSkin {
 	NEO_SKIN_FIRST = 0,
 	NEO_SKIN_SECOND,
@@ -149,6 +155,11 @@ enum NeoClass {
 
 	NEO_CLASS_ENUM_COUNT
 };
+
+// Implemented by CNEOPlayer::m_fNeoFlags.
+// Rolling our own because Source FL_ flags already reserve all 32 bits,
+// and extending the type would require a larger refactor.
+#define NEO_FL_FREEZETIME (1 << 1) // Freeze player movement, but allow looking around.
 
 #if defined(CLIENT_DLL) && !defined(CNEOBaseCombatWeapon)
 #define CNEOBaseCombatWeapon C_NEOBaseCombatWeapon
@@ -194,14 +205,12 @@ inline const char *GetRankName(int xp)
 	{
 		return "Sergeant";
 	}
-	else if (xp < 75)
+	else
 	{
 		return "Lieutenant";
 	}
-	else // :-o
-	{
-		return "Puppet Master";
-	}
 }
+
+CBaseCombatWeapon* GetNeoWepWithBits(const CNEO_Player* player, int neoWepBits);
 
 #endif // NEO_PLAYER_SHARED_H

@@ -52,6 +52,7 @@ enum NeoWepBits {
 	NEO_WEP_ZR68_S =			(1 << 27),
 	NEO_WEP_SCOPEDWEAPON =		(1 << 28), // Scoped weapons should OR this in their flags.
 	NEO_WEP_THROWABLE =			(1 << 29), // Generic for grenades
+	NEO_WEP_EXPLOSIVE =			(1 << 30), // Generic for weapons that count as explosive kills on killfeed.
 };
 
 // These are the .res file id numbers for
@@ -137,6 +138,22 @@ public:
 
 	// We do this check to avoid a player unintentionally aiming in due to holding down their aim key while an automatic wep switch occurs.
 	bool IsReadyToAimIn(void) const { return m_bReadyToAimIn; }
+
+	bool IsExplosive(void) const { return (GetNeoWepBits() & NEO_WEP_EXPLOSIVE) ? true : false; }
+
+	bool ShootingIsPrevented(void) const
+	{
+		auto owner = static_cast<CNEO_Player*>(GetOwner());
+		if (!owner)
+		{
+			return true;
+		}
+		if (owner->GetNeoFlags() & NEO_FL_FREEZETIME)
+		{
+			return true;
+		}
+		return false;
+	}
 
 	// Whether this weapon should fire automatically when holding down the attack.
 	virtual bool IsAutomatic(void) const

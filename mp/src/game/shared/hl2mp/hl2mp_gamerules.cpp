@@ -37,6 +37,10 @@
 	#include "hl2mp_bot_temp.h"
 #endif
 
+#ifdef NEO
+	#include "neo_gamerules.h"
+#endif
+
 extern void respawn(CBaseEntity *pEdict, bool fCopyCorpse);
 
 extern bool FindInList( const char **pStrings, const char *pToFind );
@@ -956,13 +960,14 @@ CAmmoDef *GetAmmoDef()
 		FCVAR_ARCHIVE | FCVAR_USERINFO,
 		"Automatically switch to picked up weapons (if more powerful)" );
 
-#else
+#endif
 
-#if defined(DEBUG) || defined(NEO)
-
-	// Handler for the "bot" command.
+#ifdef GAME_DLL
+	void Bot_f(); // Handler for the "bot" command.
+	ConCommand cc_Bot("bot", Bot_f, "Add a bot.", FCVAR_CHEAT);
+#if defined(DEBUG) && !defined(NEO)
 	void Bot_f()
-	{		
+	{
 		// Look at -count.
 		int count = 1;
 		count = clamp( count, 1, 16 );
@@ -978,13 +983,37 @@ CAmmoDef *GetAmmoDef()
 			BotPutInServer( bFrozen, iTeam );
 		}
 	}
-
-
-	ConCommand cc_Bot( "bot", Bot_f, "Add a bot.", FCVAR_CHEAT );
-#ifdef NEO
-	ConCommand cc_Bot_Alias_BotAdd("bot_add", Bot_f, "Add a bot. Alias for \"bot\".", FCVAR_CHEAT);
 #endif
 
+#ifdef NEO
+	void Bot_f()
+	{
+		// Look at -count.
+		int count = 1;
+		count = clamp(count, 1, 16);
+
+		int iTeam = -1;
+
+		// Look at -frozen.
+		bool bFrozen = false;
+
+		// Ok, spawn all the bots.
+		while (--count >= 0)
+		{
+#ifdef NEO
+			// We need to catch this fake client when it connects, but control escapes
+			// to external engine code, so just kludging a status variable here for it.
+			NEORules()->m_bNextClientIsFakeClient = true;
+#endif
+			BotPutInServer(bFrozen, iTeam);
+#ifdef NEO
+			// Toggle this off after creating the bot
+			NEORules()->m_bNextClientIsFakeClient = false;
+#endif
+		}
+	}
+
+	ConCommand cc_Bot_Alias_BotAdd("bot_add", Bot_f, "Add a bot. Alias for \"bot\".", FCVAR_CHEAT);
 #endif
 
 	bool CHL2MPRules::FShouldSwitchWeapon( CBasePlayer *pPlayer, CBaseCombatWeapon *pWeapon )
