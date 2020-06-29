@@ -25,15 +25,10 @@ jobs:
       
     - name: Install Microsoft Speech SDK 5.1
       env:
-        SPEECH_SDK_URL: 'https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe'
-        SPEECH_SDK_NAME: 'SpeechSDK51'
-        SPEECH_SDK_CONTAINED_INSTALLER: 'Microsoft Speech SDK 5.1.msi'
-      run: |
-        ls
-        $curPath = $pwd.Path
-        cd "${curPath}"
-        ls
-        
+        SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
+        SPEECH_SDK_NAME: SpeechSDK51
+        SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
+      run: |        
         echo "Downloading ${env:SPEECH_SDK_NAME}..."
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile .\${env:SPEECH_SDK_NAME}.exe
 
@@ -81,17 +76,14 @@ jobs:
         $unZipDir = "${env:SPEECH_SDK_NAME}_files"
         Expand-Archive -Path .\${env:SPEECH_SDK_NAME}.zip -DestinationPath .\${unZipDir}
         
-        cd ".\${unZipDir}"
-        ls
-        
         echo "Installing ${env:SPEECH_SDK_NAME}..."
-        $installerFullPath = $pwd.Path
-        echo "Installer full path: '${installerFullPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}'"
-        echo "Log full path: '${installerFullPath}\msiexec.log'"
-        $msi_cmd = 'msiexec /i "${installerFullPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerFullPath}\msiexec.log"'
-        echo "Msiexec cmd: '${msi_cmd}'"
-        ${msi_cmd}
+        $installerPath = $pwd.Path + "\${unZipDir}"
+        $logFile = "msiexec.log"
+        echo "Installer full path: '${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}'"
+        echo "Log full path: '${installerPath}\${$logFile}'
+        echo "Msiexec cmd: msiexec /i '${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}' /norestart /passive /l*v '${installerPath}\${$logFile}'"
+        msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${$logFile}"
         ls
         echo "Install log:"
-        cat "${installerFullPath}\msiexec.log"
+        cat "${installerPath}\${$logFile}"
 
