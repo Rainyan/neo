@@ -85,7 +85,7 @@ jobs:
         ls
         
         echo "Installing ${env:SPEECH_SDK_NAME}..."
-        $installerFullPath = $pwd.Path + "\${unZipDir}"
+        $installerFullPath = $pwd.Path
         echo "Installer full path: '${installerFullPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}'"
         echo "Log full path: '${installerFullPath}\msiexec.log'"
         msiexec /norestart /passive /i "${installerFullPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /l*v "${installerFullPath}\msiexec.log"
