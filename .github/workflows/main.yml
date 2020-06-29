@@ -25,9 +25,9 @@ jobs:
       
     - name: Install Microsoft Speech SDK 5.1
       env:
-        SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
-        SPEECH_SDK_NAME: SpeechSDK51
-        SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
+        SPEECH_SDK_URL: "https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe"
+        SPEECH_SDK_NAME: "SpeechSDK51"
+        SPEECH_SDK_CONTAINED_INSTALLER: "Microsoft Speech SDK 5.1.msi"
       run: |        
         echo "Downloading ${env:SPEECH_SDK_NAME}..."
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile .\${env:SPEECH_SDK_NAME}.exe
