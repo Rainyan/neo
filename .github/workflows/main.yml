@@ -77,7 +77,7 @@ jobs:
         Expand-Archive -Path .\${env:SPEECH_SDK_NAME}.zip -DestinationPath ${unZipPath}
         
         echo "Installing ${env:SPEECH_SDK_NAME}..."
-        cd ${unZipPath}
-        $installerFullPath = $pwd.Path + "\${SPEECH_SDK_CONTAINED_INSTALLER}"
+        $installerFullPath = $pwd.Path + "\${unZipPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}"
+        echo "Installer full path: '${$installerFullPath}'"
         msiexec /norestart /passive /i "${installerFullPath}"
 
