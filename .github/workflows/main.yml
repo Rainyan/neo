@@ -73,11 +73,11 @@ jobs:
         
         echo "Unarchiving ${env:SPEECH_SDK_NAME} installer..."
         Rename-Item -Path .\${env:SPEECH_SDK_NAME}.exe -NewName .\${env:SPEECH_SDK_NAME}.zip
-        $unZipPath = ".\${env:SPEECH_SDK_NAME}_files"
-        Expand-Archive -Path .\${env:SPEECH_SDK_NAME}.zip -DestinationPath ${unZipPath}
+        $unZipDir = "${env:SPEECH_SDK_NAME}_files"
+        Expand-Archive -Path .\${env:SPEECH_SDK_NAME}.zip -DestinationPath .\${unZipDir}
         
         echo "Installing ${env:SPEECH_SDK_NAME}..."
-        $installerFullPath = $pwd.Path + "\${unZipPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}"
+        $installerFullPath = $pwd.Path + "\${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}"
         echo "Installer full path: '${installerFullPath}'"
         msiexec /norestart /passive /i "${installerFullPath}"
 
