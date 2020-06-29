@@ -30,7 +30,8 @@ jobs:
         SPEECH_SDK_CONTAINED_INSTALLER: 'Microsoft Speech SDK 5.1.msi'
       run: |
         ls
-        cd "$pwd.Path"
+        $curPath = $pwd.Path
+        cd "${curPath}"
         ls
         
         echo "Downloading ${env:SPEECH_SDK_NAME}..."
