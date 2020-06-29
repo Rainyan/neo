@@ -2,58 +2,70 @@ name: CI
 
 on:
   push:
-    branches: [ build_test ]
+    branches: [ build_test_win ]
   pull_request:
-    branches: [ build_test ]
+    branches: [ build_test_win ]
     types: [ synchronize ]
 
 jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64 ]
-        include:
-          - runtime: linux-x64
-            os: ubuntu-latest
+        os: [ windows-latest ]
 
     runs-on: ${{ matrix.os }}
     
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+    - uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: 'x86'
+        toolset: '12.0'
       
-    - name: Update build environment
+    - name: Install Microsoft Speech SDK 5.1
+      env:
+        SPEECH_API_SDK_URL: 'https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe'
+        SPEECH_API_SDK_EXE: 'SpeechSDK51.exe'
       run: |
-        sudo apt-get update
-        sudo apt-get install build-essential gcc gcc-multilib g++-multilib make build-essential linux-headers-$(uname -r)
-          
-    - name: Install and setup Steam runtime SDK tools
-      run: |
-        cd /
-        sudo mkdir ./valve
-        cd ./valve
-        sudo wget http://media.steampowered.com/client/runtime/steam-runtime-sdk_latest.tar.xz
-        sudo tar xvf ./steam-runtime-sdk_latest.tar.xz
-        sudo mv steam-runtime-sdk_2013-09-05 steam-runtime
-        sudo chown -R $(id -u):$(id -g) ./steam-runtime
-        cd ./steam-runtime
-        (echo 3; echo 1; echo Y; echo Y; echo Y) | ./setup.sh
-        ./shell-i386.sh
-        
-        echo Testing /valve dirs...
-        pwd && ls
-        cd /valve/steam-runtime/
-        pwd && ls
-        cd ./bin/../amd64/
-        pwd && ls
-        cd ./x86_64-unknown-linux-gnu/
-        pwd && ls
-        cd ./bin/
-        pwd && ls
-        echo Done.
-        
-    - name: Build all
-      run: |
-        cd $GITHUB_WORKSPACE/mp/src
-        ./createallprojects
-        make -f everything.mak
+        Invoke-WebRequest $SPEECH_API_SDK_URL -OutFile .\$SPEECH_API_SDK_EXE
+
+        # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
+        Function Expand-AuthenticodeSignature($AuthenticodeSignature)
+        {
+          $AuthenticodeSignature | Select-object -Property Path, `
+            Status,StatusMessage,SignatureType, `
+            @{Name=’SubjectName’;Expression={($_.SignerCertificate.Subject)}}, `
+            @{Name=’SubjectIssuer’;Expression={($_.SignerCertificate.Issuer)}}, `
+            @{Name=’SubjectSerialNumber’;Expression={($_.SignerCertificate.SerialNumber)}}, `
+            @{Name=’SubjectNotBefore’;Expression={($_.SignerCertificate.NotBefore)}}, `
+            @{Name=’SubjectNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
+            @{Name=’SubjectThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}, `
+            @{Name=’TimeStamperName’;Expression={($_.SignerCertificate.Subject)}}, `
+            @{Name=’TimeStamperIssuer’;Expression={($_.SignerCertificate.Issuer)}}, `
+            @{Name=’TimeStamperSerialNumber’;Expression={($_.SignerCertificate.SerialNumber)}}, `
+            @{Name=’TimeStamperNotBefore’;Expression={($_.SignerCertificate.NotBefore)}}, `
+            @{Name=’TimeStamperNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
+            @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
+        }
+
+        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem .\$SPEECH_API_SDK_EXE | Get-AuthenticodeSignature)
+
+        # Need to match this digital signature.
+        $sigRequirements = @{
+          "Status" = "Valid";
+          "StatusMessage" = "Signature verified.";
+          "SignatureType" = "Authenticode";
+          "SubjectName" = "CN=Microsoft Corporation, OU=Copyright (c) 2001 Microsoft Corp., O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
+        }
+
+        foreach ($requirement in $sigRequirements.GetEnumerator()) {	
+          $reqName = $requirement.Name
+          $reqValue = $requirement.Value
+          $sigValue = $speechSdkSig.$reqName
+          if (-Not ($reqValue -eq $sigValue)) {
+            throw "Digital signature mismatched value of $reqName (was '$sigValue' but expected '$reqValue')"
+          }
+        }
+        echo "File $SPEECH_API_SDK_EXE passed digital signature checks."
+
