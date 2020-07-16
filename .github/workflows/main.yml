@@ -57,6 +57,7 @@ jobs:
             @{Name=’TimeStamperNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
+        
         $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:SPEECH_SDK_NAME}.exe" | Get-AuthenticodeSignature)
 
         # Need to match this digital signature.
@@ -89,6 +90,7 @@ jobs:
         echo "Log full path: `"${unZipDir}\${logFile}`""
         # Pipe to null to wait for installation to finish before continuing.
         msiexec /i "${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${unZipDir}\${logFile}" | Out-Null
+        
         # Check if the install was successful by parsing the msiexec log file.
         $msiLog = Get-Content "${unZipDir}\${logFile}"
         # Looking for a line with this pattern.
@@ -109,21 +111,8 @@ jobs:
         }
         
         echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax..."
-        
-        $fixupCmd = "cd `"${env:SPEECH_SDK_INSTALL_LOCATION}`";ls;Invoke-WebRequest `"${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}`" -OutFile `".\${env:SPEECH_SDK_PATCH_FILE}`";git apply --check --verbose --summary `".\${env:SPEECH_SDK_PATCH_FILE}`";git apply `".\${env:SPEECH_SDK_PATCH_FILE}`""
-        #echo "Fixup cmd:"
-        #echo "${fixupCmd}"
-        
-        #if (-Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        #  echo "Was non-elevated ps"
-        #} else {
-        #  echo "Was elevated ps"
-        #}
-        
-        #Start-Process PowerShell -Verb RunAs "-NoProfile -ExecutionPolicy Bypass -Command `"$fixupCmd`"" | Out-Null
         cd "${env:SPEECH_SDK_INSTALL_LOCATION}"
         Invoke-WebRequest "${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}" -OutFile ".\${env:SPEECH_SDK_PATCH_FILE}"
-        ls
         git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
         git apply ".\${env:SPEECH_SDK_PATCH_FILE}"
 
