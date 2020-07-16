@@ -55,7 +55,7 @@ jobs:
         }
         
         Print-LogHighlight("Downloading ${env:SPEECH_SDK_NAME}...")
-        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile "${env:SPEECH_SDK_NAME}.exe"
+        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
 
         Print-LogHighlight("Verifying download integrity...")
         $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:SPEECH_SDK_NAME}.exe" | Get-AuthenticodeSignature)
@@ -79,16 +79,15 @@ jobs:
         echo "File ${env:SPEECH_SDK_NAME} passed digital signature checks."
         
         Print-LogHighlight("Unarchiving ${env:SPEECH_SDK_NAME} installer...")
-        Rename-Item -Path "${env:SPEECH_SDK_NAME}.exe" -NewName "${env:SPEECH_SDK_NAME}.zip"
-        $unZipDir = "${env:SPEECH_SDK_NAME}_files"
-        Expand-Archive -Path "${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
+        Rename-Item -Path ".\${env:SPEECH_SDK_NAME}.exe" -NewName ".\${env:SPEECH_SDK_NAME}.zip"
+        $unZipDir = "${env:pwd}\${env:SPEECH_SDK_NAME}_files"
+        Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath ".\${unZipDir}"
         
         Print-LogHighlight("Installing ${env:SPEECH_SDK_NAME}...")
-        $installerPath = "$pwd" + "\${unZipDir}"
         $logFile = "msiexec.log"
-        echo "Installer full path: `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`""
-        echo "Log full path: `"${installerPath}\${logFile}`""
-        echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`" | Out-Null"
-        msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${logFile}" | Out-Null
+        echo "Installer full path: `"${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`""
+        echo "Log full path: `"${unZipDir}\${logFile}`""
+        #echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`" | Out-Null"
+        msiexec /i "${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${unZipDir}\${logFile}" | Out-Null
         Print-LogHighlight("${env:SPEECH_SDK_NAME} install log:")
-        Get-Content "${installerPath}\${logFile}"
+        Get-Content "${unZipDir}\${logFile}"
