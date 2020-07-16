@@ -67,7 +67,7 @@ jobs:
           $reqValue = $requirement.Value
           $sigValue = $speechSdkSig.$reqName
           if (-Not ($reqValue -eq $sigValue)) {
-            throw "Digital signature mismatched value of $reqName (was `"$sigValue`" but expected `"$reqValue`")"
+            throw "Digital signature mismatched value of $reqName (was `"${sigValue}`" but expected `"${reqValue}`")"
           }
         }
         echo "${env:SPEECH_SDK_PRODUCT_NAME} passed digital signature checks."
@@ -114,12 +114,13 @@ jobs:
         
     - name: Install Microsoft Build Tools 2013
       env:
-        MSBUILD_URL: https://download.microsoft.com/download/9/B/B/9BB1309E-1A8F-4A47-A6C5-ECF76672A3B3/BuildTools_Full.exe
-        MSBUILD_INSTALLER: BuildTools_Full.exe
-        MSBUILD_PRODUCT_NAME: Microsoft Build Tools 2013
+        PRODUCT_URL_BASE: https://download.microsoft.com/download/A/A/D/AAD1AA11-FF9A-4B3C-8601-054E89260B78
+        PRODUCT_NAME_BASE: vs_community
+        PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
       run: |
-        echo("Downloading ${env:MSBUILD_PRODUCT_NAME}")
-        Invoke-WebRequest ${env:MSBUILD_URL} -OutFile ".\${env:MSBUILD_INSTALLER}"
+        echo("Downloading ${env:PRODUCT_FULL_NAME}")
+        $installerPath = "$pwd" + "${env:PRODUCT_NAME_BASE}_files\${env:PRODUCT_NAME_BASE}.exe"
+        Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath}"
         
         echo("Verifying download integrity")
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
@@ -141,7 +142,7 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
         
-        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:MSBUILD_INSTALLER}" | Get-AuthenticodeSignature)
+        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${installerPath}" | Get-AuthenticodeSignature)
         
         # Need to match this digital signature.
         $sigRequirements = @{
@@ -156,28 +157,26 @@ jobs:
           $reqValue = $requirement.Value
           $sigValue = $productSig.$reqName
           if (-Not ($reqValue -eq $sigValue)) {
-            throw "Digital signature mismatched value of $reqName (was `"$sigValue`" but expected `"$reqValue`")"
+            throw "Digital signature mismatched value of $reqName (was `"${sigValue}`" but expected `"${reqValue}`")"
           }
         }
-        echo "${env:MSBUILD_PRODUCT_NAME} passed digital signature checks."
+        echo "${env:PRODUCT_FULL_NAME} installer passed digital signature checks."
         
-        echo("Installing ${env:MSBUILD_PRODUCT_NAME}")
+        echo("Installing ${env:PRODUCT_FULL_NAME}")
         $logFile = "msiexec.log"
-        $installerFullPath = "$pwd"
-        echo "Installer full path: `"${installerFullPath}\`""
-        echo "Log full path: `"${installerFullPath}\${logFile}`""
+        echo "Installer full path: `"${installerPath}\`""
+        echo "Log full path: `"${installerPath}\${logFile}`""
         # Pipe to null to wait for installation to finish before continuing.
-        msiexec /i "${installerFullPath}\${env:MSBUILD_INSTALLER}" /norestart /passive /l*v "${installerFullPath}\${logFile}" | Out-Null
+        msiexec /i "${installerPath}\${env:PRODUCT_NAME_BASE}.exe" /norestart /passive /l*v "${installerPath}\${logFile}" | Out-Null
         
         # Check if the install was successful by parsing the msiexec log file.
-        $msiLog = Get-Content "${installerFullPath}\${logFile}"
         # Looking for a line with this pattern.
         $msiLogCompletionLine = "Windows Installer installed the product."
-        $msiResultLine = Select-String -Path "${installerFullPath}\${logFile}" -Pattern $msiLogCompletionLine
+        $msiResultLine = Select-String -Path "${installerPath}\${logFile}" -Pattern $msiLogCompletionLine
         if (!$msiResultLine) {
           echo "Failed to find the required pattern; dumping log of `"${installerFullPath}\${logFile}`":"
-          Get-Content "${installerFullPath}\${logFile}"
-          throw "${env:MSBUILD_PRODUCT_NAME} MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
+          Get-Content "${installerPath}\${logFile}"
+          throw "${env:PRODUCT_FULL_NAME} MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
         }
         # Line should end with this pattern specifying the MSI exit code 0.
         $msiSuccessPattern = ": 0."
@@ -185,8 +184,8 @@ jobs:
         $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
         $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
         if (!$msiInstallSuccess) {
-          throw "${env:MSBUILD_PRODUCT_NAME} MSI success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)"
+          throw "${env:PRODUCT_FULL_NAME} MSI success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)"
         } else {
-          echo "${env:MSBUILD_PRODUCT_NAME} MSI was successful"
+          echo "${env:PRODUCT_FULL_NAME} MSI was successful"
         }
       
