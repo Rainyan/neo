@@ -30,11 +30,11 @@ jobs:
         SPEECH_SDK_NAME: SpeechSDK51
         SPEECH_SDK_PRODUCT_NAME: Microsoft Speech SDK 5.1
         SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
-      run: |
-        Function Print-LogHighlight($text)
-        {
-          Write-Host "$text" -ForegroundColor Cyan
-        }
+      run: |        
+        echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
+        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
+
+        echo("Verifying download integrity...")
         
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
@@ -54,11 +54,6 @@ jobs:
             @{Name=’TimeStamperNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
-        
-        Print-LogHighlight("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
-        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
-
-        Print-LogHighlight("Verifying download integrity...")
         $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:SPEECH_SDK_NAME}.exe" | Get-AuthenticodeSignature)
 
         # Need to match this digital signature.
@@ -79,32 +74,34 @@ jobs:
         }
         echo "File ${env:SPEECH_SDK_PRODUCT_NAME} passed digital signature checks."
         
-        Print-LogHighlight("Unarchiving ${env:SPEECH_SDK_PRODUCT_NAME} installer...")
+        echo("Unarchiving ${env:SPEECH_SDK_PRODUCT_NAME} installer...")
+        # We can interpret this self-extracting executable as a zip archive.
         Rename-Item -Path ".\${env:SPEECH_SDK_NAME}.exe" -NewName ".\${env:SPEECH_SDK_NAME}.zip"
         $unZipDir = "$pwd" + "\${env:SPEECH_SDK_NAME}_files"
         Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
         
-        Print-LogHighlight("Installing ${env:SPEECH_SDK_PRODUCT_NAME}...")
+        echo("Installing ${env:SPEECH_SDK_PRODUCT_NAME}...")
         $logFile = "msiexec.log"
         echo "Installer full path: `"${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`""
         echo "Log full path: `"${unZipDir}\${logFile}`""
-        #echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`" | Out-Null"
+        # Pipe to null to wait for installation to finish before continuing.
         msiexec /i "${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${unZipDir}\${logFile}" | Out-Null
-        Print-LogHighlight("${env:SPEECH_SDK_NAME} install log:")
+        # Check if the install was successful by parsing the msiexec log file.
         $msiLog = Get-Content "${unZipDir}\${logFile}"
+        # Looking for a line with this pattern.
         $msiLogCompletionLine = "Windows Installer installed the product."
-        
         $msiResultLine = Select-String -Path "${unZipDir}\${logFile}" -Pattern $msiLogCompletionLine
         if (!$msiResultLine) {
           throw "Installer log was missing the required pattern: `"${msiLogCompletionLine}`""
         }
-        $msiSuccessPattern = ": 0"
+        # Line should end with this pattern specifying the MSI exit code 0.
+        $msiSuccessPattern = ": 0."
         $msiResultStr = $msiResultLine.ToString().Trim()
         $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
         $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
         if (!$msiInstallSuccess) {
-          throw "MSI install success != true; ${msiResultSubstr}"
+          throw "MSI install success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)."
         } else {
-          echo "MSI install successful."
+          echo "${env:SPEECH_SDK_PRODUCT_NAME} installation was successful."
         }
 
