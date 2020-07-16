@@ -18,9 +18,21 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-    
-    - name: Define helper functions
-      run: |
+            
+    - name: Install Microsoft Speech SDK 5.1
+      env:
+        SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
+        SPEECH_SDK_NAME: SpeechSDK51
+        SPEECH_SDK_PRODUCT_NAME: Microsoft Speech SDK 5.1
+        SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
+        SPEECH_SDK_INSTALL_LOCATION: C:\Program Files (x86)\Microsoft Speech SDK 5.1
+        SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
+        SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
+      run: |        
+        echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
+        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
+        
+        echo("Verifying download integrity...")
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
         {
@@ -40,20 +52,6 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
         
-    - name: Install Microsoft Speech SDK 5.1
-      env:
-        SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
-        SPEECH_SDK_NAME: SpeechSDK51
-        SPEECH_SDK_PRODUCT_NAME: Microsoft Speech SDK 5.1
-        SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
-        SPEECH_SDK_INSTALL_LOCATION: C:\Program Files (x86)\Microsoft Speech SDK 5.1
-        SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
-        SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
-      run: |        
-        echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
-        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
-
-        echo("Verifying download integrity...")
         $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:SPEECH_SDK_NAME}.exe" | Get-AuthenticodeSignature)
 
         # Need to match this digital signature.
@@ -122,6 +120,25 @@ jobs:
         Invoke-WebRequest ${env:MSBUILD_URL} -OutFile ".\${env:MSBUILD_INSTALLER}"
         
         echo("Verifying download integrity...")
+        # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
+        Function Expand-AuthenticodeSignature($AuthenticodeSignature)
+        {
+          $AuthenticodeSignature | Select-object -Property Path, `
+            Status,StatusMessage,SignatureType, `
+            @{Name=’SubjectName’;Expression={($_.SignerCertificate.Subject)}}, `
+            @{Name=’SubjectIssuer’;Expression={($_.SignerCertificate.Issuer)}}, `
+            @{Name=’SubjectSerialNumber’;Expression={($_.SignerCertificate.SerialNumber)}}, `
+            @{Name=’SubjectNotBefore’;Expression={($_.SignerCertificate.NotBefore)}}, `
+            @{Name=’SubjectNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
+            @{Name=’SubjectThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}, `
+            @{Name=’TimeStamperName’;Expression={($_.SignerCertificate.Subject)}}, `
+            @{Name=’TimeStamperIssuer’;Expression={($_.SignerCertificate.Issuer)}}, `
+            @{Name=’TimeStamperSerialNumber’;Expression={($_.SignerCertificate.SerialNumber)}}, `
+            @{Name=’TimeStamperNotBefore’;Expression={($_.SignerCertificate.NotBefore)}}, `
+            @{Name=’TimeStamperNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
+            @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
+        }
+        
         $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:MSBUILD_INSTALLER}" | Get-AuthenticodeSignature)
         
         # Need to match this digital signature.
