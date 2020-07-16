@@ -18,13 +18,8 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-    #- uses: ilammy/msvc-dev-cmd@v1
-    #  with:
-    #    arch: 'x86'
-    #    toolset: '12.0'
       
     - name: Install Microsoft Speech SDK 5.1
-      #working-directory: .\speechsdk
       env:
         SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
         SPEECH_SDK_NAME: SpeechSDK51
@@ -115,4 +110,35 @@ jobs:
         Invoke-WebRequest "${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}" -OutFile ".\${env:SPEECH_SDK_PATCH_FILE}"
         git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
         git apply ".\${env:SPEECH_SDK_PATCH_FILE}"
-
+        
+    - name: Install Microsoft Build Tools 2013
+      env:
+        MSBUILD_URL: https://download.microsoft.com/download/9/B/B/9BB1309E-1A8F-4A47-A6C5-ECF76672A3B3/BuildTools_Full.exe
+        MSBUILD_INSTALLER: BuildTools_Full.exe
+        MSBUILD_PRODUCT_NAME: Microsoft Build Tools 2013
+      run: |
+        echo("Downloading ${env:MSBUILD_PRODUCT_NAME}...")
+        Invoke-WebRequest ${env:MSBUILD_URL} -OutFile ".\${env:MSBUILD_PRODUCT_NAME}.exe"
+        
+        echo("Verifying download integrity...")
+        
+        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:MSBUILD_INSTALLER}.exe" | Get-AuthenticodeSignature)
+        
+        # Need to match this digital signature.
+        $sigRequirements = @{
+          "Status" = "Valid";
+          "StatusMessage" = "Signature verified.";
+          "SignatureType" = "Authenticode";
+          "SubjectName" = "CN=Microsoft Corporation, OU=Copyright (c) 2001 Microsoft Corp., O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
+        }
+        
+        foreach ($requirement in $sigRequirements.GetEnumerator()) {	
+          $reqName = $requirement.Name
+          $reqValue = $requirement.Value
+          $sigValue = $productSig.$reqName
+          if (-Not ($reqValue -eq $sigValue)) {
+            throw "Digital signature mismatched value of $reqName (was `"$sigValue`" but expected `"$reqValue`")"
+          }
+        }
+        echo "${env:MSBUILD_PRODUCT_NAME} passed digital signature checks."
+      
