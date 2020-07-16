@@ -99,6 +99,8 @@ jobs:
         $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
         $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
         if (!$msiInstallSuccess) {
+          echo "Failed to find the required pattern; dumping log of `"${installerFullPath}\${logFile}`":"
+          Get-Content "${installerFullPath}\${logFile}"
           throw "MSI success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)"
         } else {
           echo "${env:SPEECH_SDK_PRODUCT_NAME} MSI was successful"
@@ -173,6 +175,8 @@ jobs:
         $msiLogCompletionLine = "Windows Installer installed the product."
         $msiResultLine = Select-String -Path "${installerFullPath}\${logFile}" -Pattern $msiLogCompletionLine
         if (!$msiResultLine) {
+          echo "Failed to find the required pattern; dumping log of `"${installerFullPath}\${logFile}`":"
+          Get-Content "${installerFullPath}\${logFile}"
           throw "${env:MSBUILD_PRODUCT_NAME} MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
         }
         # Line should end with this pattern specifying the MSI exit code 0.
