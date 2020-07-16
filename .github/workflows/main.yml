@@ -30,11 +30,6 @@ jobs:
         SPEECH_SDK_NAME: SpeechSDK51
         SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
       run: |
-        cd "${GITHUB_WORKSPACE}"
-        mkdir ".\${SPEECH_SDK_NAME}"
-        cd ".\${SPEECH_SDK_NAME}"
-        ls
-        
         echo "Downloading ${env:SPEECH_SDK_NAME}..."
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile "${env:SPEECH_SDK_NAME}.exe"
 
