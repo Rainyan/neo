@@ -18,6 +18,9 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+    - uses: microsoft/setup-msbuild@v1.0.0
+        with:
+          vs-version: [12.0, 12.0]
             
     - name: Install Microsoft Speech SDK 5.1
       env:
@@ -189,10 +192,7 @@ jobs:
         } else {
           echo "${env:PRODUCT_FULL_NAME} MSI was successful"
         }
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.0
-        with:
-          vs-version: [16.4,16.5]
+    - name: Test msbuild
       run: |
         where msbuild
         MSBuild -help
