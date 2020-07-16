@@ -109,7 +109,7 @@ jobs:
         }
         echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax..."
         cd "${env:SPEECH_SDK_INSTALL_LOCATION}"
-        Invoke-WebRequest ${env:SPEECH_SDK_PATCH_URL}/${SPEECH_SDK_PATCH_FILE} -OutFile ".\${env:SPEECH_SDK_INSTALL_LOCATION}\${SPEECH_SDK_PATCH_FILE}"
+        Invoke-WebRequest "${env:SPEECH_SDK_PATCH_URL}/${SPEECH_SDK_PATCH_FILE}" -OutFile ".\${env:SPEECH_SDK_INSTALL_LOCATION}\${SPEECH_SDK_PATCH_FILE}"
         git apply --check --verbose --summary ".\${SPEECH_SDK_PATCH_FILE}"
-        git apply "${SPEECH_SDK_PATCH_FILE}"
+        git apply ".\${SPEECH_SDK_PATCH_FILE}"
 
