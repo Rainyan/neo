@@ -84,6 +84,14 @@ jobs:
         echo "Log full path: `"${installerPath}\${logFile}`""
         echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`""
         msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${logFile}"
-        echo "Install log:"
-        Get-Content "${installerPath}\${logFile}"
+        
+        echo "Would look for path: `"${installerPath}\${logFile}`""
+        echo "This path is: `"${pwd.Path}`""
+        echo "Attempting cd"
+        ls
+        cd "${installerPath}"
+        ls
+        
+        #echo "Install log:"
+        #Get-Content "${installerPath}\${logFile}"
 
