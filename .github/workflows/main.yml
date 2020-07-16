@@ -120,8 +120,8 @@ jobs:
       run: |
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
-        $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files\${env:PRODUCT_NAME_BASE}.exe"
-        Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath}"
+        $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files"
+        Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath\${env:PRODUCT_NAME_BASE}.exe}"
         
         echo("Verifying download integrity")
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
@@ -143,7 +143,7 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
         
-        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${installerPath}" | Get-AuthenticodeSignature)
+        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${installerPath\${env:PRODUCT_NAME_BASE}.exe}" | Get-AuthenticodeSignature)
         
         # Need to match this digital signature.
         $sigRequirements = @{
@@ -175,7 +175,7 @@ jobs:
         $msiLogCompletionLine = "Windows Installer installed the product."
         $msiResultLine = Select-String -Path "${installerPath}\${logFile}" -Pattern $msiLogCompletionLine
         if (!$msiResultLine) {
-          echo "Failed to find the required pattern; dumping log of `"${installerFullPath}\${logFile}`":"
+          echo "Failed to find the required pattern; dumping log of `"${installerPath}\${logFile}`":"
           Get-Content "${installerPath}\${logFile}"
           throw "${env:PRODUCT_FULL_NAME} MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
         }
