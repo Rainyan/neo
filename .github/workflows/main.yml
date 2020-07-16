@@ -119,7 +119,7 @@ jobs:
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
       run: |
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
-        $installerPath = "$pwd" + "${env:PRODUCT_NAME_BASE}_files\${env:PRODUCT_NAME_BASE}.exe"
+        $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files\${env:PRODUCT_NAME_BASE}.exe"
         Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath}"
         
         echo("Verifying download integrity")
