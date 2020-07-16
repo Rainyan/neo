@@ -24,6 +24,7 @@ jobs:
     #    toolset: '12.0'
       
     - name: Install Microsoft Speech SDK 5.1
+      working-directory: .\speechsdk
       env:
         SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
         SPEECH_SDK_NAME: SpeechSDK51
@@ -35,7 +36,7 @@ jobs:
         ls
         
         echo "Downloading ${env:SPEECH_SDK_NAME}..."
-        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
+        Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile "${env:SPEECH_SDK_NAME}.exe"
 
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
@@ -56,7 +57,7 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
 
-        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem ".\${env:SPEECH_SDK_NAME}.exe" | Get-AuthenticodeSignature)
+        $speechSdkSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:SPEECH_SDK_NAME}.exe" | Get-AuthenticodeSignature)
 
         # Need to match this digital signature.
         $sigRequirements = @{
@@ -77,9 +78,9 @@ jobs:
         echo "File ${env:SPEECH_SDK_NAME} passed digital signature checks."
         
         echo "Unarchiving ${env:SPEECH_SDK_NAME} installer..."
-        Rename-Item -Path ".\${env:SPEECH_SDK_NAME}.exe" -NewName ".\${env:SPEECH_SDK_NAME}.zip"
+        Rename-Item -Path "${env:SPEECH_SDK_NAME}.exe" -NewName "${env:SPEECH_SDK_NAME}.zip"
         $unZipDir = "${env:SPEECH_SDK_NAME}_files"
-        Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath ".\${unZipDir}"
+        Expand-Archive -Path "${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
         
         echo "Installing ${env:SPEECH_SDK_NAME}..."
         $installerPath = "${pwd.Path}\${unZipDir}"
@@ -88,7 +89,6 @@ jobs:
         echo "Log full path: `"${installerPath}\${logFile}`""
         echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`""
         msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${logFile}"
-        ls
         echo "Install log:"
-        Get-Content ".\${logFile}"
+        Get-Content "${installerPath}\${logFile}"
 
