@@ -116,7 +116,12 @@ jobs:
         
         if (-Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
           echo "Was non-elevated ps"
+        } else {
+          echo "Was elevated ps"
         }
         
-        Start-Process PowerShell -Verb RunAs "-NoProfile -ExecutionPolicy Bypass -Command `"$fixupCmd`"";
+        Start-Process PowerShell -Verb RunAs "-NoProfile -ExecutionPolicy Bypass -Command `"$fixupCmd`"" | Out-Null
+        cd "${env:SPEECH_SDK_INSTALL_LOCATION}"
+        ls
+        git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
 
