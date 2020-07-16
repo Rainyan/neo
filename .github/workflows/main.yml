@@ -83,7 +83,8 @@ jobs:
         echo "Log full path: `"${installerPath}\${logFile}`""
         echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`""
         msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${logFile}"
+        cd "${installerPath}"
         ls
         echo "Install log:"
-        Get-Content "${installerPath}\${logFile}"
+        Get-Content "${logFile}"
 
