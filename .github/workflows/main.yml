@@ -110,7 +110,7 @@ jobs:
         
         echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax..."
         
-        $fixupCmd = "cd `"${env:SPEECH_SDK_INSTALL_LOCATION}`";ls;Invoke-WebRequest `"${env:SPEECH_SDK_PATCH_URL}/${SPEECH_SDK_PATCH_FILE}`" -OutFile `".\${SPEECH_SDK_PATCH_FILE}`";git apply --check --verbose --summary `".\${SPEECH_SDK_PATCH_FILE}`";git apply `".\${SPEECH_SDK_PATCH_FILE}`""
+        $fixupCmd = "cd `"${env:SPEECH_SDK_INSTALL_LOCATION}`";ls;Invoke-WebRequest `"${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}`" -OutFile `".\${env:SPEECH_SDK_PATCH_FILE}`";git apply --check --verbose --summary `".\${env:SPEECH_SDK_PATCH_FILE}`";git apply `".\${env:SPEECH_SDK_PATCH_FILE}`""
         echo "Fixup cmd:"
         echo "${fixupCmd}"
         
