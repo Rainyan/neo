@@ -81,7 +81,7 @@ jobs:
         Print-LogHighlight("Unarchiving ${env:SPEECH_SDK_NAME} installer...")
         Rename-Item -Path ".\${env:SPEECH_SDK_NAME}.exe" -NewName ".\${env:SPEECH_SDK_NAME}.zip"
         $unZipDir = "$pwd" + "\${env:SPEECH_SDK_NAME}_files"
-        Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath ".\${unZipDir}"
+        Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
         
         Print-LogHighlight("Installing ${env:SPEECH_SDK_NAME}...")
         $logFile = "msiexec.log"
