@@ -29,10 +29,10 @@ jobs:
         SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
         SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
       run: |        
-        echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
+        echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
         
-        echo("Verifying download integrity...")
+        echo("Verifying download integrity")
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
         {
@@ -72,13 +72,13 @@ jobs:
         }
         echo "${env:SPEECH_SDK_PRODUCT_NAME} passed digital signature checks."
         
-        echo("Unarchiving ${env:SPEECH_SDK_PRODUCT_NAME} installer...")
+        echo("Unarchiving ${env:SPEECH_SDK_PRODUCT_NAME} installer")
         # We can interpret this self-extracting executable as a zip archive.
         Rename-Item -Path ".\${env:SPEECH_SDK_NAME}.exe" -NewName ".\${env:SPEECH_SDK_NAME}.zip"
         $unZipDir = "$pwd" + "\${env:SPEECH_SDK_NAME}_files"
         Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
         
-        echo("Installing ${env:SPEECH_SDK_PRODUCT_NAME}...")
+        echo("Installing ${env:SPEECH_SDK_PRODUCT_NAME}")
         $logFile = "msiexec.log"
         echo "Installer full path: `"${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`""
         echo "Log full path: `"${unZipDir}\${logFile}`""
@@ -91,7 +91,7 @@ jobs:
         $msiLogCompletionLine = "Windows Installer installed the product."
         $msiResultLine = Select-String -Path "${unZipDir}\${logFile}" -Pattern $msiLogCompletionLine
         if (!$msiResultLine) {
-          throw "Installer log was missing the required pattern: `"${msiLogCompletionLine}`""
+          throw "MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
         }
         # Line should end with this pattern specifying the MSI exit code 0.
         $msiSuccessPattern = ": 0."
@@ -99,12 +99,12 @@ jobs:
         $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
         $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
         if (!$msiInstallSuccess) {
-          throw "MSI install success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)."
+          throw "MSI success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)"
         } else {
-          echo "${env:SPEECH_SDK_PRODUCT_NAME} installation was successful."
+          echo "${env:SPEECH_SDK_PRODUCT_NAME} MSI was successful"
         }
         
-        echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax..."
+        echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax"
         cd "${env:SPEECH_SDK_INSTALL_LOCATION}"
         Invoke-WebRequest "${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}" -OutFile ".\${env:SPEECH_SDK_PATCH_FILE}"
         git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
@@ -116,10 +116,10 @@ jobs:
         MSBUILD_INSTALLER: BuildTools_Full.exe
         MSBUILD_PRODUCT_NAME: Microsoft Build Tools 2013
       run: |
-        echo("Downloading ${env:MSBUILD_PRODUCT_NAME}...")
+        echo("Downloading ${env:MSBUILD_PRODUCT_NAME}")
         Invoke-WebRequest ${env:MSBUILD_URL} -OutFile ".\${env:MSBUILD_INSTALLER}"
         
-        echo("Verifying download integrity...")
+        echo("Verifying download integrity")
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
         Function Expand-AuthenticodeSignature($AuthenticodeSignature)
         {
@@ -158,4 +158,31 @@ jobs:
           }
         }
         echo "${env:MSBUILD_PRODUCT_NAME} passed digital signature checks."
+        
+        echo("Installing ${env:MSBUILD_PRODUCT_NAME}")
+        $logFile = "msiexec.log"
+        $installerFullPath = "$pwd"
+        echo "Installer full path: `"${installerFullPath}\`""
+        echo "Log full path: `"${installerFullPath}\${logFile}`""
+        # Pipe to null to wait for installation to finish before continuing.
+        msiexec /i "${installerFullPath}\${env:MSBUILD_INSTALLER}" /norestart /passive /l*v "${installerFullPath}\${logFile}" | Out-Null
+        
+        # Check if the install was successful by parsing the msiexec log file.
+        $msiLog = Get-Content "${installerFullPath}\${logFile}"
+        # Looking for a line with this pattern.
+        $msiLogCompletionLine = "Windows Installer installed the product."
+        $msiResultLine = Select-String -Path "${installerFullPath}\${logFile}" -Pattern $msiLogCompletionLine
+        if (!$msiResultLine) {
+          throw "${env:MSBUILD_PRODUCT_NAME} MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
+        }
+        # Line should end with this pattern specifying the MSI exit code 0.
+        $msiSuccessPattern = ": 0."
+        $msiResultStr = $msiResultLine.ToString().Trim()
+        $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
+        $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
+        if (!$msiInstallSuccess) {
+          throw "${env:MSBUILD_PRODUCT_NAME} MSI success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)"
+        } else {
+          echo "${env:MSBUILD_PRODUCT_NAME} MSI was successful"
+        }
       
