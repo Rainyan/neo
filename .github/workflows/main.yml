@@ -111,17 +111,19 @@ jobs:
         echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax..."
         
         $fixupCmd = "cd `"${env:SPEECH_SDK_INSTALL_LOCATION}`";ls;Invoke-WebRequest `"${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}`" -OutFile `".\${env:SPEECH_SDK_PATCH_FILE}`";git apply --check --verbose --summary `".\${env:SPEECH_SDK_PATCH_FILE}`";git apply `".\${env:SPEECH_SDK_PATCH_FILE}`""
-        echo "Fixup cmd:"
-        echo "${fixupCmd}"
+        #echo "Fixup cmd:"
+        #echo "${fixupCmd}"
         
-        if (-Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-          echo "Was non-elevated ps"
-        } else {
-          echo "Was elevated ps"
-        }
+        #if (-Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        #  echo "Was non-elevated ps"
+        #} else {
+        #  echo "Was elevated ps"
+        #}
         
-        Start-Process PowerShell -Verb RunAs "-NoProfile -ExecutionPolicy Bypass -Command `"$fixupCmd`"" | Out-Null
+        #Start-Process PowerShell -Verb RunAs "-NoProfile -ExecutionPolicy Bypass -Command `"$fixupCmd`"" | Out-Null
         cd "${env:SPEECH_SDK_INSTALL_LOCATION}"
+        Invoke-WebRequest "${env:SPEECH_SDK_PATCH_URL}/${env:SPEECH_SDK_PATCH_FILE}" -OutFile ".\${env:SPEECH_SDK_PATCH_FILE}"
         ls
         git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
+        git apply ".\${env:SPEECH_SDK_PATCH_FILE}"
 
