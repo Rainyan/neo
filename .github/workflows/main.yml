@@ -78,7 +78,7 @@ jobs:
         Expand-Archive -Path "${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
         
         echo "Installing ${env:SPEECH_SDK_NAME}..."
-        $installerPath = "${pwd.Path}\${unZipDir}"
+        $installerPath = "$pwd" + "\${unZipDir}"
         $logFile = "msiexec.log"
         echo "Installer full path: `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`""
         echo "Log full path: `"${installerPath}\${logFile}`""
@@ -92,6 +92,6 @@ jobs:
         cd "${installerPath}"
         ls
         
-        #echo "Install log:"
-        #Get-Content "${installerPath}\${logFile}"
+        echo "Install log:"
+        Get-Content "${installerPath}\${logFile}"
 
