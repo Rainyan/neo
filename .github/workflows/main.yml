@@ -71,7 +71,7 @@ jobs:
             throw "Digital signature mismatched value of $reqName (was `"$sigValue`" but expected `"$reqValue`")"
           }
         }
-        echo "File ${env:SPEECH_SDK_PRODUCT_NAME} passed digital signature checks."
+        echo "${env:SPEECH_SDK_PRODUCT_NAME} passed digital signature checks."
         
         echo("Unarchiving ${env:SPEECH_SDK_PRODUCT_NAME} installer...")
         # We can interpret this self-extracting executable as a zip archive.
@@ -122,7 +122,7 @@ jobs:
         
         echo("Verifying download integrity...")
         
-        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:MSBUILD_INSTALLER}.exe" | Get-AuthenticodeSignature)
+        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${env:MSBUILD_INSTALLER}" | Get-AuthenticodeSignature)
         
         # Need to match this digital signature.
         $sigRequirements = @{
