@@ -121,7 +121,7 @@ jobs:
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
         $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files"
-        Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath\${env:PRODUCT_NAME_BASE}.exe}"
+        Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
         
         echo("Verifying download integrity")
         # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
