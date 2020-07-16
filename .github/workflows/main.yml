@@ -28,6 +28,7 @@ jobs:
       env:
         SPEECH_SDK_URL: https://download.microsoft.com/download/B/4/3/B4314928-7B71-4336-9DE7-6FA4CF00B7B3/SpeechSDK51.exe
         SPEECH_SDK_NAME: SpeechSDK51
+        SPEECH_SDK_PRODUCT_NAME: Microsoft Speech SDK 5.1
         SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
       run: |
         Function Print-LogHighlight($text)
@@ -54,7 +55,7 @@ jobs:
             @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
         }
         
-        Print-LogHighlight("Downloading ${env:SPEECH_SDK_NAME}...")
+        Print-LogHighlight("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
 
         Print-LogHighlight("Verifying download integrity...")
@@ -76,18 +77,34 @@ jobs:
             throw "Digital signature mismatched value of $reqName (was `"$sigValue`" but expected `"$reqValue`")"
           }
         }
-        echo "File ${env:SPEECH_SDK_NAME} passed digital signature checks."
+        echo "File ${env:SPEECH_SDK_PRODUCT_NAME} passed digital signature checks."
         
-        Print-LogHighlight("Unarchiving ${env:SPEECH_SDK_NAME} installer...")
+        Print-LogHighlight("Unarchiving ${env:SPEECH_SDK_PRODUCT_NAME} installer...")
         Rename-Item -Path ".\${env:SPEECH_SDK_NAME}.exe" -NewName ".\${env:SPEECH_SDK_NAME}.zip"
         $unZipDir = "$pwd" + "\${env:SPEECH_SDK_NAME}_files"
         Expand-Archive -Path ".\${env:SPEECH_SDK_NAME}.zip" -DestinationPath "${unZipDir}"
         
-        Print-LogHighlight("Installing ${env:SPEECH_SDK_NAME}...")
+        Print-LogHighlight("Installing ${env:SPEECH_SDK_PRODUCT_NAME}...")
         $logFile = "msiexec.log"
         echo "Installer full path: `"${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`""
         echo "Log full path: `"${unZipDir}\${logFile}`""
         #echo "Msiexec cmd: msiexec /i `"${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}`" /norestart /passive /l*v `"${installerPath}\${logFile}`" | Out-Null"
         msiexec /i "${unZipDir}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${unZipDir}\${logFile}" | Out-Null
         Print-LogHighlight("${env:SPEECH_SDK_NAME} install log:")
-        Get-Content "${unZipDir}\${logFile}"
+        $msiLog = Get-Content "${unZipDir}\${logFile}"
+        $msiLogCompletionLine = "Windows Installer installed the product."
+        
+        $msiResultLine = Select-String -Path "${unZipDir}\${logFile}" -Pattern $msiLogCompletionLine
+        if (!$msiResultLine) {
+          throw "Installer log was missing the required pattern: `"${msiLogCompletionLine}`""
+        }
+        $msiSuccessPattern = ": 0"
+        $msiResultStr = $msiResultLine.ToString().Trim()
+        $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
+        $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
+        if (!$msiInstallSuccess) {
+          throw "MSI install success != true; ${msiResultSubstr}"
+        } else {
+          echo "MSI install successful."
+        }
+
