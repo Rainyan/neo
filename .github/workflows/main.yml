@@ -30,6 +30,9 @@ jobs:
         SPEECH_SDK_NAME: SpeechSDK51
         SPEECH_SDK_PRODUCT_NAME: Microsoft Speech SDK 5.1
         SPEECH_SDK_CONTAINED_INSTALLER: Microsoft Speech SDK 5.1.msi
+        SPEECH_SDK_INSTALL_LOCATION: C:\Program Files (x86)\Microsoft Speech SDK 5.1
+        SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
+        SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
       run: |        
         echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}...")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
@@ -104,4 +107,9 @@ jobs:
         } else {
           echo "${env:SPEECH_SDK_PRODUCT_NAME} installation was successful."
         }
+        echo "Correcting ${env:SPEECH_SDK_PRODUCT_NAME} include syntax..."
+        cd "${env:SPEECH_SDK_INSTALL_LOCATION}"
+        Invoke-WebRequest ${env:SPEECH_SDK_PATCH_URL}/${SPEECH_SDK_PATCH_FILE} -OutFile ".\${env:SPEECH_SDK_INSTALL_LOCATION}\${SPEECH_SDK_PATCH_FILE}"
+        git apply --check --verbose --summary ".\${SPEECH_SDK_PATCH_FILE}"
+        git apply < "${SPEECH_SDK_PATCH_FILE}"
 
