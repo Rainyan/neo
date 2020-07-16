@@ -85,5 +85,5 @@ jobs:
         msiexec /i "${installerPath}\${env:SPEECH_SDK_CONTAINED_INSTALLER}" /norestart /passive /l*v "${installerPath}\${logFile}"
         ls
         echo "Install log:"
-        cat "${installerPath}\${logFile}"
+        Get-Content "${installerPath}\${logFile}"
 
