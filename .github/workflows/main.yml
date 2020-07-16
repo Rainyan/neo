@@ -118,7 +118,7 @@ jobs:
         MSBUILD_PRODUCT_NAME: Microsoft Build Tools 2013
       run: |
         echo("Downloading ${env:MSBUILD_PRODUCT_NAME}...")
-        Invoke-WebRequest ${env:MSBUILD_URL} -OutFile ".\${env:MSBUILD_PRODUCT_NAME}.exe"
+        Invoke-WebRequest ${env:MSBUILD_URL} -OutFile ".\${env:MSBUILD_PRODUCT_NAME}"
         
         echo("Verifying download integrity...")
         
@@ -129,7 +129,7 @@ jobs:
           "Status" = "Valid";
           "StatusMessage" = "Signature verified.";
           "SignatureType" = "Authenticode";
-          "SubjectName" = "CN=Microsoft Corporation, OU=Copyright (c) 2001 Microsoft Corp., O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
+          "SubjectName" = "CN=Microsoft Corporation, OU=MOPR, O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
         }
         
         foreach ($requirement in $sigRequirements.GetEnumerator()) {	
