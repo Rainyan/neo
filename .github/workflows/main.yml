@@ -182,7 +182,7 @@ jobs:
         echo("Installing ${env:PRODUCT_FULL_NAME}")
         echo "Launching `"${installerPath}\${env:PRODUCT_NAME_BASE}.exe`""
         & "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
-        $wshell = New-Object -ComObject wsript.shell
+        $wshell = New-Object -ComObject "WScript.Shell"
         echo "Waiting for installer"
         # Just wait until reasonably confident the installer should be ready
         Sleep 60
