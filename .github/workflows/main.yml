@@ -19,19 +19,19 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
     
-    - name: Try msbuild
-      run: |
-        & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -legacy -version [12.0,12.0]
-        #[Environment]::GetEnvironmentVariable("VCTargetsPath")
-        #[Environment]::SetEnvironmentVariable("VCTargetsPath", "C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120", "Machine")
-        #[Environment]::GetEnvironmentVariable("VCTargetsPath")
-        #& "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe" /version
-        throw "Stop here"
+    #- name: Try msbuild
+    #  run: |
+    #    & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -legacy -version [12.0,12.0]
+    #    #[Environment]::GetEnvironmentVariable("VCTargetsPath")
+    #    #[Environment]::SetEnvironmentVariable("VCTargetsPath", "C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120", "Machine")
+    #    #[Environment]::GetEnvironmentVariable("VCTargetsPath")
+    #    #& "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe" /version
+    #    throw "Stop here"
     
-    - name: Setup msbuild v120_xp
-      uses: microsoft/setup-msbuild@v1.0.0
-      with:
-        vs-version: 12.0
+    #- name: Setup msbuild v120_xp
+    #  uses: microsoft/setup-msbuild@v1.0.0
+    #  with:
+    #    vs-version: 12.0
             
     - name: Install Microsoft Speech SDK 5.1
       env:
@@ -42,7 +42,9 @@ jobs:
         SPEECH_SDK_INSTALL_LOCATION: C:\Program Files (x86)\Microsoft Speech SDK 5.1
         SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
         SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
-      run: |        
+      run: |    
+        if (1) { echo "Skipping step."; return }
+        
         echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
         
@@ -178,32 +180,31 @@ jobs:
         echo "${env:PRODUCT_FULL_NAME} installer passed digital signature checks."
         
         echo("Installing ${env:PRODUCT_FULL_NAME}")
-        $logFile = "msiexec.log"
-        echo "Installer full path: `"${installerPath}\`""
-        echo "Log full path: `"${installerPath}\${logFile}`""
-        # Pipe to null to wait for installation to finish before continuing.
-        msiexec /i "${installerPath}\${env:PRODUCT_NAME_BASE}.exe" /norestart /passive /l*v "${installerPath}\${logFile}" | Out-Null
+        echo "Launching `"${installerPath}\${env:PRODUCT_NAME_BASE}.exe`""
+        & "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
+        $wshell = New-Object -ComObject wsript.shell
+        echo "Waiting for installer"
+        # Just wait until reasonably confident the installer should be ready
+        Sleep 60
+        # Grab the installer active window`
+        $installerWindowTitle = "Community 2013"
+        $wshell.AppActivate($installerWindowTitle)
+        Sleep 1
+        # Navigate the installer keypresses
+        $wshell.SendKeys("`t `t `t`n")
+        Sleep 10
+        # Navigate second page keypresses
+        $wshell.AppActivate($installerWindowTitle)
+        Sleep 1
+        $wshell.SendKeys("`t`t `t`t`t`n")
+        echo "Installing..."
         
-        # Check if the install was successful by parsing the msiexec log file.
-        # Looking for a line with this pattern.
-        $msiLogCompletionLine = "Windows Installer installed the product."
-        $msiResultLine = Select-String -Path "${installerPath}\${logFile}" -Pattern $msiLogCompletionLine
-        if (!$msiResultLine) {
-          echo "Failed to find the required pattern; dumping log of `"${installerPath}\${logFile}`":"
-          Get-Content "${installerPath}\${logFile}"
-          throw "${env:PRODUCT_FULL_NAME} MSI log was missing the required pattern: `"${msiLogCompletionLine}`""
-        }
-        # Line should end with this pattern specifying the MSI exit code 0.
-        $msiSuccessPattern = ": 0."
-        $msiResultStr = $msiResultLine.ToString().Trim()
-        $msiResultSubstr = $msiResultStr.Substring($msiResultStr.Length - $msiSuccessPattern.Length)
-        $msiInstallSuccess = ($msiResultSubstr -eq $msiSuccessPattern)
-        if (!$msiInstallSuccess) {
-          throw "${env:PRODUCT_FULL_NAME} MSI success != true; exitcode substring returned ${msiResultSubstr} (this may not be the actual full exit code)"
-        } else {
-          echo "${env:PRODUCT_FULL_NAME} MSI was successful"
-        }
-    - name: Test msbuild
-      run: |
-        where msbuild
-        MSBuild -help
+        # todo: complete check for files existence to determine when we're done
+        
+        Do { echo "MSBuild not yet exists in path"; Sleep 60 } while (!(Test-Path "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe"))
+        echo "MSBuild found."
+        
+        # todo: exit the installer with this. not really necessary as long as we know the install is finished.
+        # $wshell.AppActivate("Community 2013")
+        # Sleep 1
+        # $wshell.SendKeys("`t`n")
