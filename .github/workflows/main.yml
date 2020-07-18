@@ -289,7 +289,7 @@ jobs:
           # Get the actual hashes we currently have.
           $compare = @()
           if (Test-Path -Path "${env:PRODUCT_BASE_INSTALL_PATH}") {
-            Get-ChildItem "${env:PRODUCT_BASE_INSTALL_PATH}" | ForEach-Object {
+            Get-ChildItem -File "${env:PRODUCT_BASE_INSTALL_PATH}" | ForEach-Object {
               $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
             }
           }
