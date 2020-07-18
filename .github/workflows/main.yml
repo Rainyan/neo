@@ -230,9 +230,10 @@ jobs:
         				throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
         			}
         			if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
-        				throw "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
-        			}
-        			$numMatches++
+        				echo "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
+        			} else {
+                $numMatches++
+              }
         			break inner
         		}
         	}
@@ -287,7 +288,7 @@ jobs:
         $installerWaitIntervalSeconds = 60
         $numFails = 0
         # Try at most this many times with the above intervals, then give up and throw error.
-        # Set to 0 to never give up (possible to go infinitely idle on failure state).
+        # Set to 0 to never give up (possible to go infinitely idle on installer failure state, bar runner timeout).
         $maxFails = 10
         Do {
           # Get the actual hashes we currently have.
@@ -441,9 +442,10 @@ jobs:
         				throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
         			}
         			if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
-        				throw "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
-        			}
-        			$numMatches++
+        				echo "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
+        			} else {
+                $numMatches++
+              }
         			break inner
         		}
         	}
@@ -453,12 +455,11 @@ jobs:
         $installerWaitIntervalSeconds = 60
         
         # Try at most this many times with the above intervals, then give up and throw error.
-        # Set to 0 to never give up (possible to go infinitely idle on failure state).
+        # Set to 0 to never give up (possible to go infinitely idle on installer failure state, bar runner timeout).
         $maxFails = 10
         
         # Array of reference file hashes we expect to find at PRODUCT_BASE_EXE_INSTALL_PATH on a finished installation.
         $exe_references = @()
-        $exe_references += AddReference "84E1EF9C42095FA40E95602C9265C1A1" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "state.rsm"
         $exe_references += AddReference "7110728D8A61F14FC56ADCBCC0FA32DE" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "vc_mbcsmfc.exe"
         
         $exeInstallerFinished = $FALSE
@@ -470,13 +471,15 @@ jobs:
             Get-ChildItem -File "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" | ForEach-Object {
               $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
             }
+          } else {
+            echo "Not yet path at `"${env:PRODUCT_BASE_EXE_INSTALL_PATH}`""
           }
           
           $exeInstallerFinished = (IsCompareEqualToReference $exe_references $compare)
           if (-Not($exeInstallerFinished)) {
             $numFails++
             if ($numFails -eq $maxFails) {
-              throw "Reached max wait time fails; aborting"
+              throw "Reached max wait wait fails; timing out (the installer has probably failed)"
             }
             echo "Waiting for exe part of installer to finish..."
             Sleep $installerWaitIntervalSeconds
@@ -500,13 +503,15 @@ jobs:
             Get-ChildItem -File "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" | ForEach-Object {
               $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
             }
+          } else {
+            echo "Not yet path at `"${env:PRODUCT_BASE_DLL_INSTALL_PATH}`""
           }
           
           $dllInstallerFinished = (IsCompareEqualToReference $dll_references $compare)
           if (-Not($dllInstallerFinished)) {
             $numFails++
             if ($numFails -eq $maxFails) {
-              throw "Reached max wait time fails; aborting"
+              throw "Reached max wait time fails; timing out (the installer has probably failed)"
             }
             echo "Waiting for dll part of installer to finish..."
             Sleep $installerWaitIntervalSeconds
