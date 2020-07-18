@@ -213,6 +213,9 @@ jobs:
         # Compare hashes to the reference, and return whether they are equal.
         function IsCompareEqualToReference($reference, $compare)
         {
+          if ((!$reference) -Or (!$compare)) {
+            throw "Reference or compare was null"
+          }
         	if (-Not $reference.Length -eq $compare.Length) {
         		return $FALSE
         	}
@@ -412,6 +415,9 @@ jobs:
         # Compare hashes to the reference, and return whether they are equal.
         function IsCompareEqualToReference($reference, $compare)
         {
+          if ((!$reference) -Or (!$compare)) {
+            throw "Reference or compare was null"
+          }
         	if (-Not $reference.Length -eq $compare.Length) {
         		return $FALSE
         	}
@@ -451,7 +457,7 @@ jobs:
             }
           }
           
-          $exeInstallerFinished = (IsCompareEqualToReference $reference $compare)
+          $exeInstallerFinished = (IsCompareEqualToReference $exe_references $compare)
           if (-Not($exeInstallerFinished)) {
             echo "Waiting for exe part of installer to finish..."
             Sleep $installerWaitIntervalSeconds
@@ -476,7 +482,7 @@ jobs:
             }
           }
           
-          $dllInstallerFinished = (IsCompareEqualToReference $reference $compare)
+          $dllInstallerFinished = (IsCompareEqualToReference $dll_references $compare)
           if (-Not($dllInstallerFinished)) {
             echo "Waiting for dll part of installer to finish..."
             Sleep $installerWaitIntervalSeconds
@@ -507,4 +513,14 @@ jobs:
           }
         }
         echo "Installer finished"
+        
+    - name: Build all
+      env:
+        MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
+      run: |
+        cd "${env:GITHUB_WORKSPACE}"
+        ls
+        cd ".\mp\src"
+        ".\createallprojects.bat"
+        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary .\everything.sln
 
