@@ -320,6 +320,7 @@ jobs:
         # See if we've actually closed.
         $numInstallerCloseTries = 0
         $maxInstallerCloseTries = 20
+        $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
         Do {
           # The installer will launch VS when it's done, so we're trying to catch that as sign we're ready to close.
           $vsProc = Get-Process -ErrorAction SilentlyContinue "devenv"
