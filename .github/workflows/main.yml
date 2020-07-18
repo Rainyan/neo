@@ -133,6 +133,7 @@ jobs:
         PRODUCT_URL_BASE: https://download.microsoft.com/download/A/A/D/AAD1AA11-FF9A-4B3C-8601-054E89260B78
         PRODUCT_NAME_BASE: vs_community
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
+        PRODUCT_BASE_INSTALL_PATH: C:\Program Files (x86)\MSBuild\12.0\Bin
       run: |
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -199,12 +200,104 @@ jobs:
         $wshell.SendKeys("`t`t `t`t`t`n")
         echo "Installing..."
         
-        # todo: complete check for files existence to determine when we're done
+        # We're happy with MD5 because we only use it for file integrity checks; the installer
+        # we're checking against has already passed a cert check.
+        $integrityAlgo = "MD5"
         
-        Do { echo "MSBuild not yet exists in path"; Sleep 60 } while (!(Test-Path "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe"))
-        echo "MSBuild found."
+        # Helper function for populating the reference array.
+        function AddReference($hash, $path)
+        {
+        	$item = New-Object psobject
+        	$item | Add-Member -type NoteProperty -Name "Algorithm" -Value "$integrityAlgo"
+        	$item | Add-Member -type NoteProperty -Name "Hash" -Value "$hash"
+        	$item | Add-Member -type NoteProperty -Name "Path" -Value "${env:PRODUCT_BASE_INSTALL_PATH}\${path}"
+        	return $item
+        }
         
-        # todo: exit the installer with this. not really necessary as long as we know the install is finished.
-        # $wshell.AppActivate("Community 2013")
-        # Sleep 1
-        # $wshell.SendKeys("`t`n")
+        # Compare hashes to the reference, and return whether they are equal.
+        function IsCompareEqualToReference($reference, $compare)
+        {
+        	if (-Not $reference.Length -eq $compare.Length) {
+        		return $FALSE
+        	}
+        	$numMatches = 0
+        	foreach ($thisReference in $reference) {
+        		:inner foreach ($thisCompare in $compare) {
+        			if (-Not $thisReference.Path -eq $thisCompare.Path) {
+        				continue
+        			}
+        			if (-Not $thisReference.Algorithm -eq $thisCompare.Algorithm) {
+        				throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
+        			}
+        			if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
+        				throw "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
+        			}
+        			$numMatches++
+        			break inner
+        		}
+        	}
+        	return ($numMatches -eq $reference.Length)
+        }
+        
+        # Array of reference file hashes we expect to find at PRODUCT_BASE_INSTALL_PATH on a finished installation.
+        $reference = @()
+        $reference += AddReference "6CDFA59B410E8873F811C4BFFE136F99" "alink.dll"
+        $reference += AddReference "5781757B98D4CC6D3F480BC71166EB50" "csc.exe"
+        $reference += AddReference "C002006CED9DE9EDDDD0FBC440A33623" "csc.exe.config"
+        $reference += AddReference "5078D659DE71EE8CACEC46D0DE25E9E0" "csc.rsp"
+        $reference += AddReference "A19A2658BA69030C6AC9D11FD7D7E3C1" "default.win32manifest"
+        $reference += AddReference "9869F289E0261E45A2DAE189975D33E9" "FileTracker.dll"
+        $reference += AddReference "9D50746FC523CB3E3BCE14A1AFE686BE" "License.htm"
+        $reference += AddReference "36877D5E575806828C96A8BA368CB7D9" "Microsoft.Build.Conversion.v12.0.dll"
+        $reference += AddReference "422AE7CF0D74067CAF71C7000E6418AA" "Microsoft.Build.dll"
+        $reference += AddReference "4AE5C6D6318D4EA1A743CFC0C382D38A" "Microsoft.Build.Engine.dll"
+        $reference += AddReference "0EBD75453E7EF51A0325C309813AF5A1" "Microsoft.Build.Framework.dll"
+        $reference += AddReference "5F40EF6462BB201BAE66942B3875F348" "Microsoft.Build.Tasks.v12.0.dll"
+        $reference += AddReference "E194B781BBB12D3419BF9046F87E67A2" "Microsoft.Build.Utilities.v12.0.dll"
+        $reference += AddReference "D6761B31ACFDB6299229C4DCE9755C75" "Microsoft.Common.CurrentVersion.targets"
+        $reference += AddReference "E00BB9755D1AC4ED3A07DF9DA5B5DD0E" "Microsoft.Common.overridetasks"
+        $reference += AddReference "601BCA1A89025557DE5F83FC8E568FDC" "Microsoft.Common.targets"
+        $reference += AddReference "CB999A07BA9108024274E8D5ABB68B8B" "Microsoft.Common.tasks"
+        $reference += AddReference "2DB919DE22205FD34F2AC3F69BFD8BF1" "Microsoft.CSharp.CurrentVersion.targets"
+        $reference += AddReference "57F7BBE3394A011533D28D6940914367" "Microsoft.CSharp.targets"
+        $reference += AddReference "07490CBE0DD4982A6D5C85BBCFCC7D8C" "Microsoft.Data.Entity.targets"
+        $reference += AddReference "54AEA08B0626DA4951F2C5DB633A2F01" "Microsoft.NetFramework.CurrentVersion.props"
+        $reference += AddReference "2AF6302971A1DC8922D1BC71C166234D" "Microsoft.NetFramework.CurrentVersion.targets"
+        $reference += AddReference "038E070A993E62A55E391FA71B13277C" "Microsoft.NetFramework.props"
+        $reference += AddReference "A31C39592062C714EBAEA6065AA9BEF1" "Microsoft.NetFramework.targets"
+        $reference += AddReference "214B49AAD63730C0AD497DDFFE1CA3B8" "Microsoft.ServiceModel.targets"
+        $reference += AddReference "AF9CF99669399F7F73096FE83CDD5DDD" "Microsoft.VisualBasic.CurrentVersion.targets"
+        $reference += AddReference "33271FB54111743E37BA41174D722346" "Microsoft.VisualBasic.targets"
+        $reference += AddReference "FFACE2C375FB88C296270132C729F8DB" "Microsoft.WinFx.targets"
+        $reference += AddReference "20EE40C3D11DA23776EE02E0FBE18790" "Microsoft.WorkflowBuildExtensions.targets"
+        $reference += AddReference "9355486A2710ACE0ED03F5CECFAE69B9" "Microsoft.Xaml.targets"
+        $reference += AddReference "A229105148A47CBC0BE544931A71A09B" "MSBuild.exe"
+        $reference += AddReference "70A5EE423BAFDACC155EA564872CA412" "MSBuild.exe.config"
+        $reference += AddReference "DC62688854FAC06CDEBD121C95D48E01" "MSBuild.rsp"
+        $reference += AddReference "A7D33E375513D7B0219FA07969F9AC9C" "MSBuildTaskHost.exe"
+        $reference += AddReference "C9DB610D35202B83DAE4AC19C8DB4471" "MSBuildTaskHost.exe.config"
+        $reference += AddReference "309DC807F102D9B16D004E9A6E3A8F9A" "Tracker.exe"
+        $reference += AddReference "2B9DF837DE8C54842D3CABD036B24000" "vbc.exe"
+        $reference += AddReference "C002006CED9DE9EDDDD0FBC440A33623" "vbc.exe.config"
+        $reference += AddReference "2F7F2432CC38563B16A3BB7ACA8F7863" "vbc.rsp"
+        $reference += AddReference "39C82AC5CD2696DEB3B436B8BF09C952" "Workflow.targets"
+        $reference += AddReference "EFFF1B2DEA1495426AA319D374F6B065" "Workflow.VisualBasic.targets"
+        
+        $installerFinished = $FALSE
+        Do {
+          # Get the actual hashes we currently have.
+          $compare = @()
+          Get-ChildItem "${env:PRODUCT_BASE_INSTALL_PATH}" | ForEach-Object { $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName }
+          $installerFinished = (IsCompareEqualToReference $reference $compare)
+          if (-Not($installerFinished)) {
+            echo "Waiting for installer to finish..."
+          }
+        } While (-Not($installerFinished))
+        Sleep 60
+        echo "Installer finished."
+        # We still have the "Install finished" screen up here, but we don't need to bother closing it,
+        # as that would also cause the IDE to launch.
+        
+        echo "Testing msbuild:"
+        & "${env:PRODUCT_BASE_INSTALL_PATH}\msbuild /version"
+      
