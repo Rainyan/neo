@@ -462,34 +462,39 @@ jobs:
         # Set to 0 to never give up (possible to go infinitely idle on installer failure state, bar runner timeout).
         $maxFails = 10
         
-        # Array of reference file hashes we expect to find at PRODUCT_BASE_EXE_INSTALL_PATH on a finished installation.
-        $exe_references = @()
-        $exe_references += AddReference "7110728D8A61F14FC56ADCBCC0FA32DE" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "vc_mbcsmfc.exe"
-        
-        $exeInstallerFinished = $FALSE
-        $numFails = 0
-        Do {
-          # Get the actual hashes we currently have.
-          $compare = @()
-          if (Test-Path -Path "${env:PRODUCT_BASE_EXE_INSTALL_PATH}") {
-            Get-ChildItem -File "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" | ForEach-Object {
-              $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
-            }
-          } else {
-            echo "Not yet path at `"${env:PRODUCT_BASE_EXE_INSTALL_PATH}`""
-          }
+        if (1) {
+          echo "Skipping ProgramData exe path check"
+        } else {
+          # Array of reference file hashes we expect to find at PRODUCT_BASE_EXE_INSTALL_PATH on a finished installation.
+          $exe_references = @()
+          $exe_references += AddReference "84E1EF9C42095FA40E95602C9265C1A1" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "state.rsm"
+          $exe_references += AddReference "7110728D8A61F14FC56ADCBCC0FA32DE" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "vc_mbcsmfc.exe"
           
-          $exeInstallerFinished = (IsCompareEqualToReference $exe_references $compare)
-          if (-Not($exeInstallerFinished)) {
-            $numFails++
-            if ($numFails -eq $maxFails) {
-              throw "Reached max wait wait fails; timing out (the installer has probably failed)"
+          $exeInstallerFinished = $FALSE
+          $numFails = 0
+          Do {
+            # Get the actual hashes we currently have.
+            $compare = @()
+            if (Test-Path -Path "${env:PRODUCT_BASE_EXE_INSTALL_PATH}") {
+              Get-ChildItem -File "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" | ForEach-Object {
+                $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
+              }
+            } else {
+              echo "Not yet path at `"${env:PRODUCT_BASE_EXE_INSTALL_PATH}`""
             }
-            echo "Waiting for exe part of installer to finish..."
-            Sleep $installerWaitIntervalSeconds
-          }
-        } While (-Not($exeInstallerFinished))
-        Sleep $installerWaitIntervalSeconds
+            
+            $exeInstallerFinished = (IsCompareEqualToReference $exe_references $compare)
+            if (-Not($exeInstallerFinished)) {
+              $numFails++
+              if ($numFails -eq $maxFails) {
+                throw "Reached max wait wait fails; timing out (the installer has probably failed)"
+              }
+              echo "Waiting for exe part of installer to finish..."
+              Sleep $installerWaitIntervalSeconds
+            }
+          } While (-Not($exeInstallerFinished))
+          Sleep $installerWaitIntervalSeconds
+        }
         
         # Array of reference file hashes we expect to find at PRODUCT_BASE_DLL_INSTALL_PATH on a finished installation.
         $dll_references = @()
