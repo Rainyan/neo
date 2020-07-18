@@ -305,7 +305,7 @@ jobs:
             if ($numFails -eq $maxFails) {
               throw "Reached max wait time fails; aborting"
             }
-            echo "Waiting for installer to finish..."
+            echo "Waiting for installer to finish"
             Sleep $installerWaitIntervalSeconds
           }
         } While (-Not($installerFinished))
@@ -313,27 +313,56 @@ jobs:
         
         # Ask to close the installer.
         echo "Preparing to close the installer"
-        $installerProc = Get-Process "${env:PRODUCT_NAME_BASE}"
-        $installerProc.CloseMainWindow()
-        Sleep 5
-        $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
-        if ($installerProc) {
-          # Confirm "are you really sure..." prompt
-          $installerProc.CloseMainWindow()
-          Sleep 5
-          # Give installer time to cleanly close itself.
-          Sleep $installerWaitIntervalSeconds
-          $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
-          if ($installerProc) {
-            # If it still hasn't closed, do a forceful close.
-            $installerProc | Stop-Process -Force
+        $wshell.AppActivate($installerWindowTitle)
+        Sleep 1
+        $wshell.SendKeys("`t`n")
+        
+        # See if we've actually closed.
+        $numInstallerCloseTries = 0
+        $maxInstallerCloseTries = 20
+        Do {
+          # The installer will launch VS when it's done, so we're trying to catch that as sign we're ready to close.
+          $vsProc = Get-Process -ErrorAction SilentlyContinue "devenv"
+          if ($vsProc) {
+            # We got the VS process, now close it.
+            $vsProc.CloseMainWindow()
             Sleep 10
+            $vsProc = Get-Process -ErrorAction SilentlyContinue "devenv"
+            if ($vsProc) {
+              $vsProc | Stop-Process -Force
+              Sleep 10
+              $vsProc = Get-Process -ErrorAction SilentlyContinue "devenv"
+              if ($vsProc) {
+                throw "Failed to stop VS process"
+              }
+            }
+            # Do we still have the installer process? If so, close it.
             $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
             if ($installerProc) {
-              throw "Unable to kill installer proc"
+              $installerProc.CloseMainWindow()
+              Sleep 10
+              $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+              if ($installerProc) {
+                # "Are you sure" prompt
+                $installerProc.CloseMainWindow()
+                Sleep 10
+                $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+                if ($installerProc) {
+                  $installerProc | Stop-Process -Force
+                  $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+                  if ($installerProc) {
+                    throw "Failed to stop installer process"
+                  }
+                }
+              }
             }
           }
-        }
+          $numInstallerCloseTries++
+          if ($numInstallerCloseTries -eq $maxInstallerCloseTries) {
+            throw "Reached max installer close tries; bailing out"
+          }
+          Sleep 10
+        } While ($installerProc)
         echo "Installer finished"
         
         echo "Testing msbuild:"
@@ -489,7 +518,7 @@ jobs:
               if ($numFails -eq $maxFails) {
                 throw "Reached max wait wait fails; timing out (the installer has probably failed)"
               }
-              echo "Waiting for exe part of installer to finish..."
+              echo "Waiting for exe part of installer to finish"
               Sleep $installerWaitIntervalSeconds
             }
           } While (-Not($exeInstallerFinished))
@@ -522,7 +551,7 @@ jobs:
             if ($numFails -eq $maxFails) {
               throw "Reached max wait time fails; timing out (the installer has probably failed)"
             }
-            echo "Waiting for dll part of installer to finish..."
+            echo "Waiting for dll part of installer to finish"
             Sleep $installerWaitIntervalSeconds
           }
         } While (-Not($dllInstallerFinished))
