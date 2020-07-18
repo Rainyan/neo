@@ -64,7 +64,7 @@ jobs:
           "SubjectName" = "CN=Microsoft Corporation, OU=Copyright (c) 2001 Microsoft Corp., O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
         }
 
-        foreach ($requirement in $sigRequirements.GetEnumerator()) {	
+        foreach ($requirement in $sigRequirements.GetEnumerator()) {  
           $reqName = $requirement.Name
           $reqValue = $requirement.Value
           $sigValue = $speechSdkSig.$reqName
@@ -158,7 +158,7 @@ jobs:
           "SubjectName" = "CN=Microsoft Corporation, OU=MOPR, O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
         }
         
-        foreach ($requirement in $sigRequirements.GetEnumerator()) {	
+        foreach ($requirement in $sigRequirements.GetEnumerator()) {  
           $reqName = $requirement.Name
           $reqValue = $requirement.Value
           $sigValue = $productSig.$reqName
@@ -203,11 +203,11 @@ jobs:
         # Helper function for populating the reference array.
         function AddReference($hash, $path)
         {
-        	$item = New-Object psobject
-        	$item | Add-Member -type NoteProperty -Name "Algorithm" -Value "$integrityAlgo"
-        	$item | Add-Member -type NoteProperty -Name "Hash" -Value "$hash"
-        	$item | Add-Member -type NoteProperty -Name "Path" -Value "${env:PRODUCT_BASE_INSTALL_PATH}\${path}"
-        	return $item
+          $item = New-Object psobject
+          $item | Add-Member -type NoteProperty -Name "Algorithm" -Value "$integrityAlgo"
+          $item | Add-Member -type NoteProperty -Name "Hash" -Value "$hash"
+          $item | Add-Member -type NoteProperty -Name "Path" -Value "${env:PRODUCT_BASE_INSTALL_PATH}\${path}"
+          return $item
         }
         
         # Compare hashes to the reference, and return whether they are equal.
@@ -217,27 +217,27 @@ jobs:
           if (!$reference) {
             throw "Reference was null"
           }
-        	if (-Not $reference.Length -eq $compare.Length) {
-        		return $FALSE
-        	}
-        	$numMatches = 0
-        	foreach ($thisReference in $reference) {
-        		:inner foreach ($thisCompare in $compare) {
-        			if (-Not $thisReference.Path -eq $thisCompare.Path) {
-        				continue
-        			}
-        			if (-Not $thisReference.Algorithm -eq $thisCompare.Algorithm) {
-        				throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
-        			}
-        			if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
-        				echo "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
-        			} else {
+          if (-Not $reference.Length -eq $compare.Length) {
+            return $FALSE
+          }
+          $numMatches = 0
+          foreach ($thisReference in $reference) {
+            :inner foreach ($thisCompare in $compare) {
+              if (-Not $thisReference.Path -eq $thisCompare.Path) {
+                continue
+              }
+              if (-Not $thisReference.Algorithm -eq $thisCompare.Algorithm) {
+                throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
+              }
+              if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
+                echo "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
+              } else {
                 $numMatches++
               }
-        			break inner
-        		}
-        	}
-        	return ($numMatches -eq $reference.Length)
+              break inner
+            }
+          }
+          return ($numMatches -eq $reference.Length)
         }
         
         # Array of reference file hashes we expect to find at PRODUCT_BASE_INSTALL_PATH on a finished installation.
@@ -384,7 +384,7 @@ jobs:
           "SubjectName" = "CN=Microsoft Corporation, OU=MOPR, O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
         }
         
-        foreach ($requirement in $sigRequirements.GetEnumerator()) {	
+        foreach ($requirement in $sigRequirements.GetEnumerator()) {  
           $reqName = $requirement.Name
           $reqValue = $requirement.Value
           $sigValue = $productSig.$reqName
@@ -412,14 +412,18 @@ jobs:
         Sleep 1
         $wshell.SendKeys("`t`t`n")
         
+        # We're happy with MD5 because we only use it for file integrity checks; the installer
+        # we're checking against has already passed a cert check.
+        $integrityAlgo = "MD5"
+        
         # Helper function for populating the reference array.
         function AddReference($hash, $path, $file)
         {
-        	$item = New-Object psobject
-        	$item | Add-Member -type NoteProperty -Name "Algorithm" -Value "$integrityAlgo"
-        	$item | Add-Member -type NoteProperty -Name "Hash" -Value "$hash"
-        	$item | Add-Member -type NoteProperty -Name "Path" -Value "${$path}\${file}"
-        	return $item
+          $item = New-Object psobject
+          $item | Add-Member -type NoteProperty -Name "Algorithm" -Value "$integrityAlgo"
+          $item | Add-Member -type NoteProperty -Name "Hash" -Value "$hash"
+          $item | Add-Member -type NoteProperty -Name "Path" -Value "${$path}\${file}"
+          return $item
         }
         
         # Compare hashes to the reference, and return whether they are equal.
@@ -429,27 +433,27 @@ jobs:
           if (!$reference) {
             throw "Reference was null"
           }
-        	if (-Not $reference.Length -eq $compare.Length) {
-        		return $FALSE
-        	}
-        	$numMatches = 0
-        	foreach ($thisReference in $reference) {
-        		:inner foreach ($thisCompare in $compare) {
-        			if (-Not $thisReference.Path -eq $thisCompare.Path) {
-        				continue
-        			}
-        			if (-Not $thisReference.Algorithm -eq $thisCompare.Algorithm) {
-        				throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
-        			}
-        			if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
-        				echo "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
-        			} else {
+          if (-Not $reference.Length -eq $compare.Length) {
+            return $FALSE
+          }
+          $numMatches = 0
+          foreach ($thisReference in $reference) {
+            :inner foreach ($thisCompare in $compare) {
+              if (-Not $thisReference.Path -eq $thisCompare.Path) {
+                continue
+              }
+              if (-Not $thisReference.Algorithm -eq $thisCompare.Algorithm) {
+                throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
+              }
+              if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
+                echo "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
+              } else {
                 $numMatches++
               }
-        			break inner
-        		}
-        	}
-        	return ($numMatches -eq $reference.Length)
+              break inner
+            }
+          }
+          return ($numMatches -eq $reference.Length)
         }
         
         $installerWaitIntervalSeconds = 60
