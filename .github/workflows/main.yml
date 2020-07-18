@@ -284,6 +284,7 @@ jobs:
         $reference += AddReference "EFFF1B2DEA1495426AA319D374F6B065" "Workflow.VisualBasic.targets"
         
         $installerFinished = $FALSE
+        $installerWaitIntervalSeconds = 60
         Do {
           # Get the actual hashes we currently have.
           $compare = @()
@@ -296,9 +297,10 @@ jobs:
           $installerFinished = (IsCompareEqualToReference $reference $compare)
           if (-Not($installerFinished)) {
             echo "Waiting for installer to finish..."
+            Sleep $installerWaitIntervalSeconds
           }
         } While (-Not($installerFinished))
-        Sleep 60
+        Sleep $installerWaitIntervalSeconds
         echo "Installer finished."
         # We still have the "Install finished" screen up here, but we don't need to bother closing it,
         # as that would also cause the IDE to launch.
