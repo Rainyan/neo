@@ -306,5 +306,5 @@ jobs:
         # as that would also cause the IDE to launch.
         
         echo "Testing msbuild:"
-        & "${env:PRODUCT_BASE_INSTALL_PATH}\msbuild /version"
+        & "${env:PRODUCT_BASE_INSTALL_PATH}\MSBuild.exe" /version
       
