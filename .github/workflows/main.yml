@@ -18,20 +18,6 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-    
-    #- name: Try msbuild
-    #  run: |
-    #    & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -legacy -version [12.0,12.0]
-    #    #[Environment]::GetEnvironmentVariable("VCTargetsPath")
-    #    #[Environment]::SetEnvironmentVariable("VCTargetsPath", "C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120", "Machine")
-    #    #[Environment]::GetEnvironmentVariable("VCTargetsPath")
-    #    #& "C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe" /version
-    #    throw "Stop here"
-    
-    #- name: Setup msbuild v120_xp
-    #  uses: microsoft/setup-msbuild@v1.0.0
-    #  with:
-    #    vs-version: 12.0
             
     - name: Install Microsoft Speech SDK 5.1
       env:
@@ -135,6 +121,8 @@ jobs:
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
         PRODUCT_BASE_INSTALL_PATH: C:\Program Files (x86)\MSBuild\12.0\Bin
       run: |
+        if (1) { echo "Skipping step."; return }
+        
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
         $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files"
@@ -308,3 +296,55 @@ jobs:
         echo "Testing msbuild:"
         & "${env:PRODUCT_BASE_INSTALL_PATH}\MSBuild.exe" /version
       
+    - name: Install Visual C++ MFC MBCS Library for Visual Studio 2013
+      env:
+        PRODUCT_URL_BASE: https://download.microsoft.com/download/0/2/3/02389126-40A7-46FD-9D83-802454852703
+        PRODUCT_NAME_BASE: vc_mbcsmfc
+        PRODUCT_FULL_NAME: Visual C++ MFC MBCS Library for Visual Studio 2013
+        PRODUCT_BASE_DLL_INTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
+        PRODUCT_BASE_EXE_INSTALL_PATH: C:\ProgramData\Package Cache\{91501789-1ec3-422d-9043-b1065a88d603}
+      run: |
+        echo("Downloading ${env:PRODUCT_FULL_NAME}")
+        mkdir ".\${env:PRODUCT_NAME_BASE}_files"
+        $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files"
+        Invoke-WebRequest "${env:PRODUCT_URL_BASE}/${env:PRODUCT_NAME_BASE}.exe" -OutFile "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
+        
+        echo("Verifying download integrity")
+        # Based on https://devblogs.microsoft.com/scripting/reporting-on-digitally-signed-files-with-powershell/
+        Function Expand-AuthenticodeSignature($AuthenticodeSignature)
+        {
+          $AuthenticodeSignature | Select-object -Property Path, `
+            Status,StatusMessage,SignatureType, `
+            @{Name=’SubjectName’;Expression={($_.SignerCertificate.Subject)}}, `
+            @{Name=’SubjectIssuer’;Expression={($_.SignerCertificate.Issuer)}}, `
+            @{Name=’SubjectSerialNumber’;Expression={($_.SignerCertificate.SerialNumber)}}, `
+            @{Name=’SubjectNotBefore’;Expression={($_.SignerCertificate.NotBefore)}}, `
+            @{Name=’SubjectNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
+            @{Name=’SubjectThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}, `
+            @{Name=’TimeStamperName’;Expression={($_.SignerCertificate.Subject)}}, `
+            @{Name=’TimeStamperIssuer’;Expression={($_.SignerCertificate.Issuer)}}, `
+            @{Name=’TimeStamperSerialNumber’;Expression={($_.SignerCertificate.SerialNumber)}}, `
+            @{Name=’TimeStamperNotBefore’;Expression={($_.SignerCertificate.NotBefore)}}, `
+            @{Name=’TimeStamperNotAfter’;Expression={($_.SignerCertificate.NotAfter)}}, `
+            @{Name=’TimeStamperThumbprint’;Expression={($_.SignerCertificate.ThumbPrint)}}
+        }
+        
+        $productSig = Expand-AuthenticodeSignature -AuthenticodeSignature (Get-ChildItem "${installerPath}\${env:PRODUCT_NAME_BASE}.exe" | Get-AuthenticodeSignature)
+        
+        # Need to match this digital signature.
+        $sigRequirements = @{
+          "Status" = "Valid";
+          "StatusMessage" = "Signature verified.";
+          "SignatureType" = "Authenticode";
+          "SubjectName" = "CN=Microsoft Corporation, OU=MOPR, O=Microsoft Corporation, L=Redmond, S=Washington, C=US";
+        }
+        
+        foreach ($requirement in $sigRequirements.GetEnumerator()) {	
+          $reqName = $requirement.Name
+          $reqValue = $requirement.Value
+          $sigValue = $productSig.$reqName
+          if (-Not ($reqValue -eq $sigValue)) {
+            throw "Digital signature mismatched value of $reqName (was `"${sigValue}`" but expected `"${reqValue}`")"
+          }
+        }
+        echo "${env:PRODUCT_FULL_NAME} installer passed digital signature checks."
