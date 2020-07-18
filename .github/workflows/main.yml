@@ -114,7 +114,7 @@ jobs:
         git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
         git apply ".\${env:SPEECH_SDK_PATCH_FILE}"
         
-    - name: Install Microsoft Visual Studio Community 2013 with Update 5
+    - name: Install Microsoft Visual Studio Community 2013 with Update 5 and MFC
       env:
         PRODUCT_URL_BASE: https://download.microsoft.com/download/A/A/D/AAD1AA11-FF9A-4B3C-8601-054E89260B78
         PRODUCT_NAME_BASE: vs_community
@@ -299,6 +299,7 @@ jobs:
         Sleep $installerWaitIntervalSeconds
         
         # Ask to close the installer.
+        echo "Preparing to close the installer"
         $installerProc = Get-Process "${env:PRODUCT_NAME_BASE}"
         $installerProc.CloseMainWindow()
         Sleep 5
@@ -320,7 +321,7 @@ jobs:
             }
           }
         }
-        echo "Installer finished."
+        echo "Installer finished"
         
         echo "Testing msbuild:"
         & "${env:PRODUCT_BASE_INSTALL_PATH}\MSBuild.exe" /version
@@ -330,7 +331,7 @@ jobs:
         PRODUCT_URL_BASE: https://download.microsoft.com/download/0/2/3/02389126-40A7-46FD-9D83-802454852703
         PRODUCT_NAME_BASE: vc_mbcsmfc
         PRODUCT_FULL_NAME: Visual C++ MFC MBCS Library for Visual Studio 2013
-        PRODUCT_BASE_DLL_INTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
+        PRODUCT_BASE_DLL_INSTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
         PRODUCT_BASE_EXE_INSTALL_PATH: C:\ProgramData\Package Cache\{91501789-1ec3-422d-9043-b1065a88d603}
       run: |
         if (0) { echo "Skipping step."; return }
@@ -398,13 +399,112 @@ jobs:
         Sleep 1
         $wshell.SendKeys("`t`t`n")
         
-        # todo: recognize when done.
+        # Helper function for populating the reference array.
+        function AddReference($hash, $path, $file)
+        {
+        	$item = New-Object psobject
+        	$item | Add-Member -type NoteProperty -Name "Algorithm" -Value "$integrityAlgo"
+        	$item | Add-Member -type NoteProperty -Name "Hash" -Value "$hash"
+        	$item | Add-Member -type NoteProperty -Name "Path" -Value "${$path}\${file}"
+        	return $item
+        }
         
+        # Compare hashes to the reference, and return whether they are equal.
+        function IsCompareEqualToReference($reference, $compare)
+        {
+        	if (-Not $reference.Length -eq $compare.Length) {
+        		return $FALSE
+        	}
+        	$numMatches = 0
+        	foreach ($thisReference in $reference) {
+        		:inner foreach ($thisCompare in $compare) {
+        			if (-Not $thisReference.Path -eq $thisCompare.Path) {
+        				continue
+        			}
+        			if (-Not $thisReference.Algorithm -eq $thisCompare.Algorithm) {
+        				throw "Algorith mismatch ($thisReference.Algorithm vs. $thisCompare.Algorithm)"
+        			}
+        			if (-Not $thisReference.Hash -eq $thisCompare.Hash) {
+        				throw "Hash mismatch ($thisReference.Hash vs. $thisCompare.Hash)"
+        			}
+        			$numMatches++
+        			break inner
+        		}
+        	}
+        	return ($numMatches -eq $reference.Length)
+        }
         
-        return
+        $installerWaitIntervalSeconds = 60
         
-        # exit sequence
+        # Array of reference file hashes we expect to find at PRODUCT_BASE_EXE_INSTALL_PATH on a finished installation.
+        $exe_references = @()
+        $exe_references += AddReference "84E1EF9C42095FA40E95602C9265C1A1" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "state.rsm"
+        $exe_references += AddReference "7110728D8A61F14FC56ADCBCC0FA32DE" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "vc_mbcsmfc.exe"
+        
+        $exeInstallerFinished = $FALSE
+        Do {
+          # Get the actual hashes we currently have.
+          $compare = @()
+          if (Test-Path -Path "${env:PRODUCT_BASE_EXE_INSTALL_PATH}") {
+            Get-ChildItem -File "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" | ForEach-Object {
+              $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
+            }
+          }
+          
+          $exeInstallerFinished = (IsCompareEqualToReference $reference $compare)
+          if (-Not($exeInstallerFinished)) {
+            echo "Waiting for exe part of installer to finish..."
+            Sleep $installerWaitIntervalSeconds
+          }
+        } While (-Not($exeInstallerFinished))
+        Sleep $installerWaitIntervalSeconds
+        
+        # Array of reference file hashes we expect to find at PRODUCT_BASE_DLL_INSTALL_PATH on a finished installation.
+        $dll_references = @()
+        $dll_references += AddReference "DF9A5545501A2442CA54C73C6F4DE827" "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" "mfc120.dll"
+        $dll_references += AddReference "F4F2A4C459DD3AA22DD3984D13B15746" "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" "mfc120u.dll"
+        $dll_references += AddReference "832CC047743469082FAE5E3CC830CD8C" "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" "mfcm120.dll"
+        $dll_references += AddReference "AB8766067BB26D7AB4061B0E4FC7D2C0" "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" "mfcm120u.dll"
+        
+        $dllInstallerFinished = $FALSE
+        Do {
+          # Get the actual hashes we currently have.
+          $compare = @()
+          if (Test-Path -Path "${env:PRODUCT_BASE_DLL_INSTALL_PATH}") {
+            Get-ChildItem -File "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" | ForEach-Object {
+              $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
+            }
+          }
+          
+          $dllInstallerFinished = (IsCompareEqualToReference $reference $compare)
+          if (-Not($dllInstallerFinished)) {
+            echo "Waiting for dll part of installer to finish..."
+            Sleep $installerWaitIntervalSeconds
+          }
+        } While (-Not($dllInstallerFinished))
+        Sleep $installerWaitIntervalSeconds
+        
+        # Installer exit sequence.
         $wshell.AppActivate($installerWindowTitle)
         Sleep 1
         $wshell.SendKeys("`t ")
+        
+        # Ask to close the installer.
+        echo "Preparing to close the installer"
+        $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+        if ($installerProc) {
+          $installerProc.CloseMainWindow()
+          Sleep 5
+          $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+          if ($installerProc) {
+            # If it still hasn't closed, do a forceful close.
+            $installerProc | Stop-Process -Force
+            Sleep 10
+             $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+            if ($installerProc) {
+              throw "Unable to kill installer proc"
+            }
+          }
+        }
+        echo "Installer finished"
 
