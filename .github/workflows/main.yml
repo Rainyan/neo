@@ -175,7 +175,7 @@ jobs:
         echo "Waiting for installer"
         # Just wait until reasonably confident the installer should be ready
         Sleep 60
-        # Grab the installer active window`
+        # Grab the installer active window
         $installerWindowTitle = "Community 2013"
         $wshell.AppActivate($installerWindowTitle)
         Sleep 1
@@ -348,3 +348,26 @@ jobs:
           }
         }
         echo "${env:PRODUCT_FULL_NAME} installer passed digital signature checks."
+        
+        # !!!
+        return
+        
+        echo("Installing ${env:PRODUCT_FULL_NAME}")
+        echo "Launching `"${installerPath}\${env:PRODUCT_NAME_BASE}.exe`""
+        & "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
+        $wshell = New-Object -ComObject "WScript.Shell"
+        echo "Waiting for installer"
+        # Just wait until reasonably confident the installer should be ready
+        Sleep 60
+        # Grab the installer active window
+        $installerWindowTitle = "${env:PRODUCT_FULL_NAME}"
+        $wshell.AppActivate($installerWindowTitle)
+        Sleep 1
+        # Navigate the installer keypresses
+        $wshell.SendKeys("`t `t `t`n")
+        Sleep 10
+        
+        # todo: this key sequence should either exit if we didn't have prerequisite vs tools installed,
+        # or proceed to next panel.
+        
+        # check if we still got the process active to determine if we can continue
