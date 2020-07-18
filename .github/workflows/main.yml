@@ -213,8 +213,9 @@ jobs:
         # Compare hashes to the reference, and return whether they are equal.
         function IsCompareEqualToReference($reference, $compare)
         {
-          if ((!$reference) -Or (!$compare)) {
-            throw "Reference or compare was null"
+          # Compare is allowed to be empty (ie. got nothing to compare), but the reference must exist.
+          if (!$reference) {
+            throw "Reference was null"
           }
         	if (-Not $reference.Length -eq $compare.Length) {
         		return $FALSE
@@ -415,8 +416,9 @@ jobs:
         # Compare hashes to the reference, and return whether they are equal.
         function IsCompareEqualToReference($reference, $compare)
         {
-          if ((!$reference) -Or (!$compare)) {
-            throw "Reference or compare was null"
+          # Compare is allowed to be empty (ie. got nothing to compare), but the reference must exist.
+          if (!$reference) {
+            throw "Reference was null"
           }
         	if (-Not $reference.Length -eq $compare.Length) {
         		return $FALSE
