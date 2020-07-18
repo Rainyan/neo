@@ -29,7 +29,7 @@ jobs:
         SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
         SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
       run: |    
-        if (1) { echo "Skipping step."; return }
+        if (0) { echo "Skipping step."; return }
         
         echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
@@ -121,7 +121,7 @@ jobs:
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
         PRODUCT_BASE_INSTALL_PATH: C:\Program Files (x86)\MSBuild\12.0\Bin
       run: |
-        if (1) { echo "Skipping step."; return }
+        if (0) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -179,13 +179,21 @@ jobs:
         $installerWindowTitle = "Community 2013"
         $wshell.AppActivate($installerWindowTitle)
         Sleep 1
-        # Navigate the installer keypresses
+        # Navigate the installer first page keypresses
         $wshell.SendKeys("`t `t `t`n")
         Sleep 10
-        # Navigate second page keypresses
         $wshell.AppActivate($installerWindowTitle)
         Sleep 1
-        $wshell.SendKeys("`t`t `t`t`t`n")
+        # Navigate second page keypresses.
+        # Deselect all additional payloads.
+        $wshell.SendKeys("`t`t `t`t`t`t`t`t")
+        # Need this for arrow down input.
+        [void][System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+        Sleep 1
+        [System.Windows.Forms.SendKeys]::SendWait("{DOWN}")
+        Sleep 1
+        # Include the MFC to install, and begin installation.
+        $wshell.SendKeys(" `t`t`t`t`n")
         echo "Installing..."
         
         # We're happy with MD5 because we only use it for file integrity checks; the installer
@@ -289,9 +297,30 @@ jobs:
           }
         } While (-Not($installerFinished))
         Sleep $installerWaitIntervalSeconds
+        
+        # Ask to close the installer.
+        $installerProc = Get-Process "${env:PRODUCT_NAME_BASE}"
+        $installerProc.CloseMainWindow()
+        Sleep 5
+        $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+        if ($installerProc) {
+          # Confirm "are you really sure..." prompt
+          $installerProc.CloseMainWindow()
+          Sleep 5
+          # Give installer time to cleanly close itself.
+          Sleep $installerWaitIntervalSeconds
+          $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+          if ($installerProc) {
+            # If it still hasn't closed, do a forceful close.
+            $installerProc | Stop-Process -Force
+            Sleep 10
+            $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
+            if ($installerProc) {
+              throw "Unable to kill installer proc"
+            }
+          }
+        }
         echo "Installer finished."
-        # We still have the "Install finished" screen up here, but we don't need to bother closing it,
-        # as that would also cause the IDE to launch.
         
         echo "Testing msbuild:"
         & "${env:PRODUCT_BASE_INSTALL_PATH}\MSBuild.exe" /version
@@ -304,6 +333,8 @@ jobs:
         PRODUCT_BASE_DLL_INTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
         PRODUCT_BASE_EXE_INSTALL_PATH: C:\ProgramData\Package Cache\{91501789-1ec3-422d-9043-b1065a88d603}
       run: |
+        if (0) { echo "Skipping step."; return }
+        
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
         $installerPath = "$pwd" + "\${env:PRODUCT_NAME_BASE}_files"
@@ -348,10 +379,7 @@ jobs:
           }
         }
         echo "${env:PRODUCT_FULL_NAME} installer passed digital signature checks."
-        
-        # !!!
-        return
-        
+                
         echo("Installing ${env:PRODUCT_FULL_NAME}")
         echo "Launching `"${installerPath}\${env:PRODUCT_NAME_BASE}.exe`""
         & "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
@@ -364,10 +392,19 @@ jobs:
         $wshell.AppActivate($installerWindowTitle)
         Sleep 1
         # Navigate the installer keypresses
-        $wshell.SendKeys("`t `t `t`n")
-        Sleep 10
+        $wshell.SendKeys("`t ")
+        Sleep 1
+        $wshell.AppActivate($installerWindowTitle)
+        Sleep 1
+        $wshell.SendKeys("`t`t`n")
         
-        # todo: this key sequence should either exit if we didn't have prerequisite vs tools installed,
-        # or proceed to next panel.
+        # todo: recognize when done.
         
-        # check if we still got the process active to determine if we can continue
+        
+        return
+        
+        # exit sequence
+        $wshell.AppActivate($installerWindowTitle)
+        Sleep 1
+        $wshell.SendKeys("`t ")
+
