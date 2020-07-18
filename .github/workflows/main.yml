@@ -285,6 +285,10 @@ jobs:
         
         $installerFinished = $FALSE
         $installerWaitIntervalSeconds = 60
+        $numFails = 0
+        # Try at most this many times with the above intervals, then give up and throw error.
+        # Set to 0 to never give up (possible to go infinitely idle on failure state).
+        $maxFails = 10
         Do {
           # Get the actual hashes we currently have.
           $compare = @()
@@ -296,6 +300,10 @@ jobs:
           
           $installerFinished = (IsCompareEqualToReference $reference $compare)
           if (-Not($installerFinished)) {
+            $numFails++
+            if ($numFails -eq $maxFails) {
+              throw "Reached max wait time fails; aborting"
+            }
             echo "Waiting for installer to finish..."
             Sleep $installerWaitIntervalSeconds
           }
@@ -444,12 +452,17 @@ jobs:
         
         $installerWaitIntervalSeconds = 60
         
+        # Try at most this many times with the above intervals, then give up and throw error.
+        # Set to 0 to never give up (possible to go infinitely idle on failure state).
+        $maxFails = 10
+        
         # Array of reference file hashes we expect to find at PRODUCT_BASE_EXE_INSTALL_PATH on a finished installation.
         $exe_references = @()
         $exe_references += AddReference "84E1EF9C42095FA40E95602C9265C1A1" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "state.rsm"
         $exe_references += AddReference "7110728D8A61F14FC56ADCBCC0FA32DE" "${env:PRODUCT_BASE_EXE_INSTALL_PATH}" "vc_mbcsmfc.exe"
         
         $exeInstallerFinished = $FALSE
+        $numFails = 0
         Do {
           # Get the actual hashes we currently have.
           $compare = @()
@@ -461,6 +474,10 @@ jobs:
           
           $exeInstallerFinished = (IsCompareEqualToReference $exe_references $compare)
           if (-Not($exeInstallerFinished)) {
+            $numFails++
+            if ($numFails -eq $maxFails) {
+              throw "Reached max wait time fails; aborting"
+            }
             echo "Waiting for exe part of installer to finish..."
             Sleep $installerWaitIntervalSeconds
           }
@@ -475,6 +492,7 @@ jobs:
         $dll_references += AddReference "AB8766067BB26D7AB4061B0E4FC7D2C0" "${env:PRODUCT_BASE_DLL_INSTALL_PATH}" "mfcm120u.dll"
         
         $dllInstallerFinished = $FALSE
+        $numFails = 0
         Do {
           # Get the actual hashes we currently have.
           $compare = @()
@@ -486,6 +504,10 @@ jobs:
           
           $dllInstallerFinished = (IsCompareEqualToReference $dll_references $compare)
           if (-Not($dllInstallerFinished)) {
+            $numFails++
+            if ($numFails -eq $maxFails) {
+              throw "Reached max wait time fails; aborting"
+            }
             echo "Waiting for dll part of installer to finish..."
             Sleep $installerWaitIntervalSeconds
           }
