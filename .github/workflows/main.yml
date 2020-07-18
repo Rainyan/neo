@@ -287,7 +287,12 @@ jobs:
         Do {
           # Get the actual hashes we currently have.
           $compare = @()
-          Get-ChildItem "${env:PRODUCT_BASE_INSTALL_PATH}" | ForEach-Object { $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName }
+          if (Test-Path -Path "${env:PRODUCT_BASE_INSTALL_PATH}" {
+            Get-ChildItem "${env:PRODUCT_BASE_INSTALL_PATH}" | ForEach-Object {
+              $compare += Get-FileHash -Algorithm "$integrityAlgo" $_.FullName
+            }
+          }
+          
           $installerFinished = (IsCompareEqualToReference $reference $compare)
           if (-Not($installerFinished)) {
             echo "Waiting for installer to finish..."
