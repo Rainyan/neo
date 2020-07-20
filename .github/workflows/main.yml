@@ -316,22 +316,28 @@ jobs:
         $numIOSuccesses = 0
         $numIOSuccessesToContinue = 10
         Do {
-          $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
-          if (!$perfProc) {
-            throw "Couldn't get perfproc"
-          }
-          if (-not($perfProc.IODataOperationsPersec -eq 0)) {
-            $numFails++
-            if ($numFails -eq $maxFails) {
-              throw "IO check reached max wait time fails; aborting"
+          Get-Process "${env:PRODUCT_NAME_BASE}" | ForEach-Object {
+	          $id = $_.Id
+            $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.IDProcess -eq $id }
+            if (!$perfProc) {
+              throw "Couldn't get perfproc"
             }
-            echo "Waiting for data IO to finish"
-            Sleep $installerWaitIntervalSeconds
-          } else {
-            $numIOSuccesses++
-            Sleep 5
+            if ($perfProc.IODataOperationsPersec -eq 0) {
+              $numIOSuccesses++
+              echo "${numIOSuccesses}/${numIOSuccessesToContinue}"
+              Sleep 5
+              continue
+            } else {
+              echo "Installer data io: $($perfProc.IODataOperationsPersec)"
+            }
           }
-        } While ((-not($perfProc.IODataOperationsPersec -eq 0)) -and ($numIOSuccesses -eq $numIOSuccessesToContinue))
+          $numFails++
+          if ($numFails -eq $maxFails) {
+            throw "IO check reached max wait time fails; aborting"
+          }
+          echo "Waiting for data IO to finish"
+          Sleep $installerWaitIntervalSeconds
+        } While (-not($numIOSuccesses -eq $numIOSuccessesToContinue))
         echo "IO data finished"
         
         # Ask to close the installer.
