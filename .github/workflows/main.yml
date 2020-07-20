@@ -317,7 +317,7 @@ jobs:
         $numIOSuccessesToContinue = 10
         Do {
           Get-Process "${env:PRODUCT_NAME_BASE}" | ForEach-Object {
-	          $id = $_.Id
+            $id = $_.Id
             $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.IDProcess -eq $id }
             if (!$perfProc) {
               throw "Couldn't get perfproc"
