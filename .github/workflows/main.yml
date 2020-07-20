@@ -29,7 +29,7 @@ jobs:
         SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
         SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
       run: |    
-        if (0) { echo "Skipping step."; return }
+        if (1) { echo "Skipping step."; return }
         
         echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
@@ -121,7 +121,7 @@ jobs:
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
         PRODUCT_BASE_INSTALL_PATH: C:\Program Files (x86)\MSBuild\12.0\Bin
       run: |
-        if (0) { echo "Skipping step."; return }
+        if (1) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -423,7 +423,7 @@ jobs:
         PRODUCT_BASE_DLL_INSTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
         PRODUCT_BASE_EXE_INSTALL_PATH: C:\ProgramData\Package Cache\{91501789-1ec3-422d-9043-b1065a88d603}
       run: |
-        if (0) { echo "Skipping step."; return }
+        if (1) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -655,9 +655,6 @@ jobs:
       env:
         MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
       run: |
-        cd "${env:GITHUB_WORKSPACE}"
-        ls
-        cd ".\mp\src"
-        ".\createallprojects.bat"
-        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary .\everything.sln
+        cd "${env:GITHUB_WORKSPACE}\mp\src\createallprojects.bat"
+        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary "${env:GITHUB_WORKSPACE}\mp\src\everything.sln"
 
