@@ -340,6 +340,8 @@ jobs:
         Sleep 1
         $wshell.SendKeys("`t`n")
         
+        if (0) {
+        
         # See if we've actually closed.
         $numInstallerCloseTries = 0
         $maxInstallerCloseTries = 20
@@ -388,6 +390,8 @@ jobs:
           }
         } While ($installerProc)
         echo "Installer finished"
+        
+        }
         
         echo "Testing msbuild:"
         & "${env:PRODUCT_BASE_INSTALL_PATH}\MSBuild.exe" /version
