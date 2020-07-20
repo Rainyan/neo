@@ -667,6 +667,6 @@ jobs:
         # "ERROR: Unable to find RegKey for .vcproj or .vcxproj files in solutions."
         & ".\createallprojects.bat"
         
-        # If compiler doesn't exist, the VS setup has most likely failed in a previous runner step.
-        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary "${env:GITHUB_WORKSPACE}\mp\src\everything.sln"
+        # If the compiler binary doesn't exist, the VS setup has most likely failed in a previous runner step.
+        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary  .\everything.sln
 
