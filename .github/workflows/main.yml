@@ -669,5 +669,10 @@ jobs:
         & ".\createallprojects.bat"
         
         # If the compiler binary doesn't exist, the VS setup has most likely failed in a previous runner step.
-        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary  .\everything.sln
+        & "${env:MSBUILD_BIN}" /target:Build /property:Configuration=Release /fileLogger /detailedSummary /verbosity:detailed  .\everything.sln
+        
+        if (-not(Test-Path -Path ".\msbuild.log")) {
+          throw "Did not produce msbuild.log output; build has probably failed"
+        }
+        Get-Content ".\msbuild.log"
 
