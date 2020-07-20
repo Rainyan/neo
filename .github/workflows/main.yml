@@ -300,16 +300,38 @@ jobs:
           }
           
           $installerFinished = (IsCompareEqualToReference $reference $compare)
-          if (-Not($installerFinished)) {
+          if (-not($installerFinished)) {
             $numFails++
             if ($numFails -eq $maxFails) {
-              throw "Reached max wait time fails; aborting"
+              throw "Hash check reached max wait time fails; aborting"
             }
             echo "Waiting for installer to finish"
             Sleep $installerWaitIntervalSeconds
           }
-        } While (-Not($installerFinished))
-        Sleep $installerWaitIntervalSeconds
+        } While (-not($installerFinished))
+        
+        # Wait for IO data to complete before continuing.
+        $numFails = 0
+        $maxFails = 10
+        $numIOSuccesses = 0
+        $numIOSuccessesToContinue = 10
+        Do {
+          $perfProc = get-wmiobject Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
+          if (!$perfProc) {
+            throw "Couldn't get perfproc"
+          }
+          if (-not($perfProc.IODataOperationsPersec -eq 0)) {
+            $numFails++
+            if ($numFails -eq $maxFails) {
+              throw "IO check reached max wait time fails; aborting"
+            }
+            echo "Waiting for data IO to finish"
+            Sleep $installerWaitIntervalSeconds
+          } else {
+            $numIOSuccesses++
+          }
+        } While ((-not($perfProc.IODataOperationsPersec -eq 0)) -and ($numIOSuccesses -eq $numIOSuccessesToContinue))
+        echo "IO data finished"
         
         # Ask to close the installer.
         echo "Preparing to close the installer"
@@ -423,7 +445,7 @@ jobs:
           }
         }
         echo "${env:PRODUCT_FULL_NAME} installer passed digital signature checks."
-                
+        
         echo("Installing ${env:PRODUCT_FULL_NAME}")
         echo "Launching `"${installerPath}\${env:PRODUCT_NAME_BASE}.exe`""
         & "${installerPath}\${env:PRODUCT_NAME_BASE}.exe"
@@ -514,7 +536,7 @@ jobs:
             }
             
             $exeInstallerFinished = (IsCompareEqualToReference $exe_references $compare)
-            if (-Not($exeInstallerFinished)) {
+            if (-not($exeInstallerFinished)) {
               $numFails++
               if ($numFails -eq $maxFails) {
                 throw "Reached max wait wait fails; timing out (the installer has probably failed)"
@@ -522,7 +544,7 @@ jobs:
               echo "Waiting for exe part of installer to finish"
               Sleep $installerWaitIntervalSeconds
             }
-          } While (-Not($exeInstallerFinished))
+          } While (-not($exeInstallerFinished))
           Sleep $installerWaitIntervalSeconds
         }
         
@@ -557,6 +579,29 @@ jobs:
           }
         } While (-Not($dllInstallerFinished))
         Sleep $installerWaitIntervalSeconds
+        
+        # Wait for IO data to complete before continuing.
+        $numFails = 0
+        $maxFails = 10
+        $numIOSuccesses = 0
+        $numIOSuccessesToContinue = 10
+        Do {
+          $perfProc = get-wmiobject Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
+          if (!$perfProc) {
+            throw "Couldn't get perfproc"
+          }
+          if (-not($perfProc.IODataOperationsPersec -eq 0)) {
+            $numFails++
+            if ($numFails -eq $maxFails) {
+              throw "IO check reached max wait time fails; aborting"
+            }
+            echo "Waiting for data IO to finish"
+            Sleep $installerWaitIntervalSeconds
+          } else {
+            $numIOSuccesses++
+          }
+        } While ((-not($perfProc.IODataOperationsPersec -eq 0)) -and ($numIOSuccesses -eq $numIOSuccessesToContinue))
+        echo "IO data finished"
         
         # Installer exit sequence.
         $wshell.AppActivate($installerWindowTitle)
