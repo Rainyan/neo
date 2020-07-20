@@ -312,10 +312,13 @@ jobs:
         
         # Wait for IO data to complete before continuing.
         $numFails = 0
-        $maxFails = 10
+        $maxFails = 20
         $numIOSuccesses = 0
-        $numIOSuccessesToContinue = 10
+        $numIOSuccessesToContinue = 20
         Do {
+          $loopNumSuccesses = 0
+          # 2 procs that we iterate; need both to succceed
+          $expectedLoopNumSuccesses = 2
           Get-Process "${env:PRODUCT_NAME_BASE}" | ForEach-Object {
             $id = $_.Id
             $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.IDProcess -eq $id }
@@ -323,19 +326,29 @@ jobs:
               throw "Couldn't get perfproc"
             }
             if ($perfProc.IODataOperationsPersec -eq 0) {
-              $numIOSuccesses++
-              echo "${numIOSuccesses}/${numIOSuccessesToContinue}"
-              Sleep 5
-              continue
+              $loopNumSuccesses++
+              $numFails = 0
             } else {
               echo "Installer data io: $($perfProc.IODataOperationsPersec)"
             }
           }
-          $numFails++
-          if ($numFails -eq $maxFails) {
-            throw "IO check reached max wait time fails; aborting"
+          
+          While (Get-Process -ErrorAction SilentlyContinue "devenv") {
+            echo "Waiting for devenv setup"
+            Sleep $installerWaitIntervalSeconds
           }
-          echo "Waiting for data IO to finish"
+          
+          if ($loopNumSuccesses -eq $expectedLoopNumSuccesses) {
+            $numIOSuccesses++
+            echo "${numIOSuccesses}/${numIOSuccessesToContinue}"
+          } else {
+            $numFails++
+            $numIOSuccesses = 0
+            if ($numFails -eq $maxFails) {
+              throw "IO check reached max wait time fails; aborting"
+            }
+            echo "Waiting for data IO to finish"
+          }
           Sleep $installerWaitIntervalSeconds
         } While (-not($numIOSuccesses -eq $numIOSuccessesToContinue))
         echo "IO data finished"
