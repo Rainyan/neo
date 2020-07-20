@@ -359,6 +359,7 @@ jobs:
         $wshell.AppActivate($installerWindowTitle)
         Sleep 1
         $wshell.SendKeys("`t`n")
+        Sleep $installerWaitIntervalSeconds
         
         # todo: fix me
         if (0) {
@@ -615,7 +616,7 @@ jobs:
         Do {
           $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
           if (!$perfProc) {
-            throw "Couldn't get perfproc"
+            throw "Couldn't get ${env:PRODUCT_NAME_BASE} perfproc"
           }
           if (-not($perfProc.IODataOperationsPersec -eq 0)) {
             $numFails++
