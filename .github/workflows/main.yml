@@ -316,7 +316,7 @@ jobs:
         $numIOSuccesses = 0
         $numIOSuccessesToContinue = 10
         Do {
-          $perfProc = get-wmiobject Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
+          $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
           if (!$perfProc) {
             throw "Couldn't get perfproc"
           }
@@ -586,7 +586,7 @@ jobs:
         $numIOSuccesses = 0
         $numIOSuccessesToContinue = 10
         Do {
-          $perfProc = get-wmiobject Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
+          $perfProc = Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | ? { $_.name -eq "${env:PRODUCT_NAME_BASE}" }
           if (!$perfProc) {
             throw "Couldn't get perfproc"
           }
