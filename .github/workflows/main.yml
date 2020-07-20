@@ -29,7 +29,7 @@ jobs:
         SPEECH_SDK_PATCH_URL: https://gist.githubusercontent.com/Rainyan/6ac519c7257b54f45546c0864adc1cb0/raw/9c8444790c53365a3143accb26851cb3dbb574ac
         SPEECH_SDK_PATCH_FILE: fix_speechsdk_syntax.patch
       run: |    
-        if (1) { echo "Skipping step."; return }
+        if (0) { echo "Skipping step."; return }
         
         echo("Downloading ${env:SPEECH_SDK_PRODUCT_NAME}")
         Invoke-WebRequest ${env:SPEECH_SDK_URL} -OutFile ".\${env:SPEECH_SDK_NAME}.exe"
@@ -121,7 +121,7 @@ jobs:
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
         PRODUCT_BASE_INSTALL_PATH: C:\Program Files (x86)\MSBuild\12.0\Bin
       run: |
-        if (1) { echo "Skipping step."; return }
+        if (0) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -312,9 +312,10 @@ jobs:
         
         # Wait for IO data to complete before continuing.
         $numFails = 0
-        $maxFails = 20
+        $maxFails = 40
         $numIOSuccesses = 0
-        $numIOSuccessesToContinue = 20
+        $numIOSuccessesToContinue = 10
+        $installerWaitIntervalSeconds = 30
         Do {
           $loopNumSuccesses = 0
           # 2 procs that we iterate; need both to succceed
@@ -359,6 +360,7 @@ jobs:
         Sleep 1
         $wshell.SendKeys("`t`n")
         
+        # todo: fix me
         if (0) {
         
         # See if we've actually closed.
@@ -423,7 +425,7 @@ jobs:
         PRODUCT_BASE_DLL_INSTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
         PRODUCT_BASE_EXE_INSTALL_PATH: C:\ProgramData\Package Cache\{91501789-1ec3-422d-9043-b1065a88d603}
       run: |
-        if (1) { echo "Skipping step."; return }
+        if (0) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -538,6 +540,7 @@ jobs:
         # Set to 0 to never give up (possible to go infinitely idle on installer failure state, bar runner timeout).
         $maxFails = 10
         
+        # todo: fix me
         if (1) {
           echo "Skipping ProgramData exe path check"
         } else {
@@ -655,8 +658,15 @@ jobs:
       env:
         MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
       run: |
+        if (0) { echo "Skipping step."; return }
+        
         # Need to cd here because the batch script call tools relative to this dir position.
         cd "${env:GITHUB_WORKSPACE}\mp\src"
+        
+        # If we fail with the following error message, VS setup has most likely failed in a previous runner step:
+        # "ERROR: Unable to find RegKey for .vcproj or .vcxproj files in solutions."
         & ".\createallprojects.bat"
-        # & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary "${env:GITHUB_WORKSPACE}\mp\src\everything.sln"
+        
+        # If compiler doesn't exist, the VS setup has most likely failed in a previous runner step.
+        & "${env:MSBUILD_BIN}" -t:Build -p:Configuration=Release -detailedSummary "${env:GITHUB_WORKSPACE}\mp\src\everything.sln"
 
