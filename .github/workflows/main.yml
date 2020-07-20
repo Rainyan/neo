@@ -329,6 +329,7 @@ jobs:
             Sleep $installerWaitIntervalSeconds
           } else {
             $numIOSuccesses++
+            Sleep 5
           }
         } While ((-not($perfProc.IODataOperationsPersec -eq 0)) -and ($numIOSuccesses -eq $numIOSuccessesToContinue))
         echo "IO data finished"
@@ -344,6 +345,7 @@ jobs:
         $maxInstallerCloseTries = 20
         $installerProc = Get-Process -ErrorAction SilentlyContinue "${env:PRODUCT_NAME_BASE}"
         Do {
+          Sleep $installerWaitIntervalSeconds
           # The installer will launch VS when it's done, so we're trying to catch that as sign we're ready to close.
           $vsProc = Get-Process -ErrorAction SilentlyContinue "devenv"
           if ($vsProc) {
@@ -384,7 +386,6 @@ jobs:
           if ($numInstallerCloseTries -eq $maxInstallerCloseTries) {
             throw "Reached max installer close tries; bailing out"
           }
-          Sleep 10
         } While ($installerProc)
         echo "Installer finished"
         
