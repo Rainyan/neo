@@ -658,7 +658,7 @@ jobs:
     - name: Build all
       env:
         MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
-        DEVENV_BIN: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.exe
+        DEVENV_COM: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com
       run: |
         if (0) { echo "Skipping step."; return }
         
@@ -676,10 +676,15 @@ jobs:
         # If the compiler binary doesn't exist, the VS setup has most likely failed in a previous runner step.
         # & "${env:MSBUILD_BIN}" ${options} .\everything.sln
         
-        & "${env:DEVENV_BIN}" .\everything.sln /Build Release /Out compile.log
+        & "${env:DEVENV_COM}" .\everything.sln /Build Release /Out compile_errors.log
         
-        if (-not(Test-Path -Path ".\compile.log")) {
-          throw "Did not produce compile log output; build has probably failed"
+        if (Test-Path -Path ".\compile_errors.log") {
+          Get-Content ".\compile_errors.log"
+          throw "Encountered compile error"
         }
-        Get-Content ".\compile.log"
-
+        
+        echo "`nListing build products:"
+        cd "${env:GITHUB_WORKSPACE}\mp\game\neo"
+        ls
+        cd ".\bin"
+        ls
