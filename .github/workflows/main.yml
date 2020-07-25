@@ -658,6 +658,7 @@ jobs:
     - name: Build all
       env:
         MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
+        DEVENV_BIN: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.exe
       run: |
         if (0) { echo "Skipping step."; return }
         
@@ -669,11 +670,13 @@ jobs:
         & ".\createallprojects.bat"
         
         # /target:Build
-        $options = "/property:Configuration=Release /fileLogger /detailedSummary /verbosity:detailed"
-        $options += " /Yu`"cbase.h`" /MP /GS /TP /analyze- /W4 /wd`"4316`" /Gy /Zc:wchar_t /I`".\`" /I`"..\..\common`" /I`"..\..\public`" /I`"..\..\public\tier0`" /I`"..\..\public\tier1`" /I`"..\..\game\client\generated_proto_neo`" /I`"..\..\thirdparty\protobuf-2.3.0\src`" /I`"..\..\vgui2\include`" /I`"..\..\vgui2\controls`" /I`"..\..\game\shared`" /I`".\game_controls`" /I`"..\..\thirdparty\sixensesdk\include`" /I`"hl2mp\ui`" /I`".\hl2mp`" /I`".\neo`" /I`"..\..\game\shared\hl2mp`" /I`"..\..\game\shared\neo`" /I`"..\..\game\shared\neo\weapons`" /I`".\hl2`" /I`".\hl2\elements`" /I`"..\..\game\shared\hl2`" /Zi /Gm- /O2 /Ob2 /Fd`".\Release_neo\/`" /fp:fast /D `"VPC`" /D `"RAD_TELEMETRY_DISABLED`" /D `"WIN32`" /D `"_WIN32`" /D `"NDEBUG`" /D `"_WINDOWS`" /D `"_USRDLL`" /D `"_CRT_SECURE_NO_DEPRECATE`" /D `"_CRT_NONSTDC_NO_DEPRECATE`" /D `"_ALLOW_RUNTIME_LIBRARY_MISMATCH`" /D `"_ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH`" /D `"_ALLOW_MSC_VER_MISMATCH`" /D `"_USING_V110_SDK71_`" /D `"_WINDLL`" /D `"_MBCS`" /D `"COMPILER_MSVC32`" /D `"COMPILER_MSVC`" /D `"_DLL_EXT=.dll`" /D `"DLLNAME=client`" /D `"BINK_VIDEO`" /D `"AVI_VIDEO`" /D `"WMV_VIDEO`" /D `"DEV_BUILD`" /D `"FRAME_POINTER_OMISSION_DISABLED`" /D `"NO_STRING_T`" /D `"CLIENT_DLL`" /D `"VECTOR`" /D `"VERSION_SAFE_STEAM_API_INTERFACES`" /D `"PROTECTED_THINGS_ENABLE`" /D `"strncpy=use_Q_strncpy_instead`" /D `"_snprintf=use_Q_snprintf_instead`" /D `"fopen=dont_use_fopen`" /D `"NEO`" /D `"HL2MP`" /D `"HL2_CLIENT_DLL`" /D `"_EXTERNAL_DLL_EXT=.dll`" /D `"VPCGAMECAPS=HL2MP`" /D `"PROJECTDIR=${env:GITHUB_WORKSPACE}\mp\src\game\client`" /D `"SOURCE1=1`" /D `"VPCGAME=hl2mp`" /errorReport:prompt /GF /WX /Zc:forScope /GR /arch:SSE /Gd /Oy- /Oi /MT /FC /Fa`".\Release_neo\/`" /nologo /Fo`".\Release_neo\/`" /Ot /Fp`".\Release_neo\/client.pch`""
-        
+        # $options = "/property:Configuration=Release /fileLogger /detailedSummary /verbosity:detailed"
+        # $options += " /Yu`"cbase.h`" /MP /GS /TP /analyze- /W4 /wd`"4316`" /Gy /Zc:wchar_t /I`".\`" /I`"..\..\common`" /I`"..\..\public`" /I`"..\..\public\tier0`" /I`"..\..\public\tier1`" /I`"..\..\game\client\generated_proto_neo`" /I`"..\..\thirdparty\protobuf-2.3.0\src`" /I`"..\..\vgui2\include`" /I`"..\..\vgui2\controls`" /I`"..\..\game\shared`" /I`".\game_controls`" /I`"..\..\thirdparty\sixensesdk\include`" /I`"hl2mp\ui`" /I`".\hl2mp`" /I`".\neo`" /I`"..\..\game\shared\hl2mp`" /I`"..\..\game\shared\neo`" /I`"..\..\game\shared\neo\weapons`" /I`".\hl2`" /I`".\hl2\elements`" /I`"..\..\game\shared\hl2`" /Zi /Gm- /O2 /Ob2 /Fd`".\Release_neo\/`" /fp:fast /D `"VPC`" /D `"RAD_TELEMETRY_DISABLED`" /D `"WIN32`" /D `"_WIN32`" /D `"NDEBUG`" /D `"_WINDOWS`" /D `"_USRDLL`" /D `"_CRT_SECURE_NO_DEPRECATE`" /D `"_CRT_NONSTDC_NO_DEPRECATE`" /D `"_ALLOW_RUNTIME_LIBRARY_MISMATCH`" /D `"_ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH`" /D `"_ALLOW_MSC_VER_MISMATCH`" /D `"_USING_V110_SDK71_`" /D `"_WINDLL`" /D `"_MBCS`" /D `"COMPILER_MSVC32`" /D `"COMPILER_MSVC`" /D `"_DLL_EXT=.dll`" /D `"DLLNAME=client`" /D `"BINK_VIDEO`" /D `"AVI_VIDEO`" /D `"WMV_VIDEO`" /D `"DEV_BUILD`" /D `"FRAME_POINTER_OMISSION_DISABLED`" /D `"NO_STRING_T`" /D `"CLIENT_DLL`" /D `"VECTOR`" /D `"VERSION_SAFE_STEAM_API_INTERFACES`" /D `"PROTECTED_THINGS_ENABLE`" /D `"strncpy=use_Q_strncpy_instead`" /D `"_snprintf=use_Q_snprintf_instead`" /D `"fopen=dont_use_fopen`" /D `"NEO`" /D `"HL2MP`" /D `"HL2_CLIENT_DLL`" /D `"_EXTERNAL_DLL_EXT=.dll`" /D `"VPCGAMECAPS=HL2MP`" /D `"PROJECTDIR=${env:GITHUB_WORKSPACE}\mp\src\game\client`" /D `"SOURCE1=1`" /D `"VPCGAME=hl2mp`" /errorReport:prompt /GF /WX /Zc:forScope /GR /arch:SSE /Gd /Oy- /Oi /MT /FC /Fa`".\Release_neo\/`" /nologo /Fo`".\Release_neo\/`" /Ot /Fp`".\Release_neo\/client.pch`""
+        #
         # If the compiler binary doesn't exist, the VS setup has most likely failed in a previous runner step.
-        & "${env:MSBUILD_BIN}" ${options} .\everything.sln
+        # & "${env:MSBUILD_BIN}" ${options} .\everything.sln
+        
+        & "${env:DEVENV_BIN}" .\everything.sln /Build
         
         if (-not(Test-Path -Path ".\msbuild.log")) {
           throw "Did not produce msbuild.log output; build has probably failed"
