@@ -676,10 +676,10 @@ jobs:
         # If the compiler binary doesn't exist, the VS setup has most likely failed in a previous runner step.
         # & "${env:MSBUILD_BIN}" ${options} .\everything.sln
         
-        & "${env:DEVENV_BIN}" .\everything.sln /Build
+        & "${env:DEVENV_BIN}" .\everything.sln /Build Release /Out compile.log
         
-        if (-not(Test-Path -Path ".\msbuild.log")) {
-          throw "Did not produce msbuild.log output; build has probably failed"
+        if (-not(Test-Path -Path ".\compile.log")) {
+          throw "Did not produce compile log output; build has probably failed"
         }
-        Get-Content ".\msbuild.log"
+        Get-Content ".\compile.log"
 
