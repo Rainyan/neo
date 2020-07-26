@@ -114,6 +114,9 @@ jobs:
         git apply --check --verbose --summary ".\${env:SPEECH_SDK_PATCH_FILE}"
         git apply ".\${env:SPEECH_SDK_PATCH_FILE}"
         
+        echo "Symlinking ${env:SPEECH_SDK_PRODUCT_NAME} includes"
+        mklink /j ".\sapi51" "${env:SPEECH_SDK_INSTALL_LOCATION}"
+        
     - name: Install Microsoft Visual Studio Community 2013 with Update 5 and MFC
       env:
         PRODUCT_URL_BASE: https://download.microsoft.com/download/A/A/D/AAD1AA11-FF9A-4B3C-8601-054E89260B78
@@ -657,31 +660,28 @@ jobs:
         
     - name: Build all
       env:
-        MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
         DEVENV_COM: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com
       run: |
         if (0) { echo "Skipping step."; return }
         
-        # Need to cd here because the batch script call tools relative to this dir position.
+        # Need to cd here because the batch script calls tools relative to this dir position.
         cd "${env:GITHUB_WORKSPACE}\mp\src"
         
         # If we fail with the following error message, VS setup has most likely failed in a previous runner step:
         # "ERROR: Unable to find RegKey for .vcproj or .vcxproj files in solutions."
         & ".\createallprojects.bat"
+      
+        $compileErrLog = "compile_errors.log"
         
-        # /target:Build
-        # $options = "/property:Configuration=Release /fileLogger /detailedSummary /verbosity:detailed"
-        # $options += " /Yu`"cbase.h`" /MP /GS /TP /analyze- /W4 /wd`"4316`" /Gy /Zc:wchar_t /I`".\`" /I`"..\..\common`" /I`"..\..\public`" /I`"..\..\public\tier0`" /I`"..\..\public\tier1`" /I`"..\..\game\client\generated_proto_neo`" /I`"..\..\thirdparty\protobuf-2.3.0\src`" /I`"..\..\vgui2\include`" /I`"..\..\vgui2\controls`" /I`"..\..\game\shared`" /I`".\game_controls`" /I`"..\..\thirdparty\sixensesdk\include`" /I`"hl2mp\ui`" /I`".\hl2mp`" /I`".\neo`" /I`"..\..\game\shared\hl2mp`" /I`"..\..\game\shared\neo`" /I`"..\..\game\shared\neo\weapons`" /I`".\hl2`" /I`".\hl2\elements`" /I`"..\..\game\shared\hl2`" /Zi /Gm- /O2 /Ob2 /Fd`".\Release_neo\/`" /fp:fast /D `"VPC`" /D `"RAD_TELEMETRY_DISABLED`" /D `"WIN32`" /D `"_WIN32`" /D `"NDEBUG`" /D `"_WINDOWS`" /D `"_USRDLL`" /D `"_CRT_SECURE_NO_DEPRECATE`" /D `"_CRT_NONSTDC_NO_DEPRECATE`" /D `"_ALLOW_RUNTIME_LIBRARY_MISMATCH`" /D `"_ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH`" /D `"_ALLOW_MSC_VER_MISMATCH`" /D `"_USING_V110_SDK71_`" /D `"_WINDLL`" /D `"_MBCS`" /D `"COMPILER_MSVC32`" /D `"COMPILER_MSVC`" /D `"_DLL_EXT=.dll`" /D `"DLLNAME=client`" /D `"BINK_VIDEO`" /D `"AVI_VIDEO`" /D `"WMV_VIDEO`" /D `"DEV_BUILD`" /D `"FRAME_POINTER_OMISSION_DISABLED`" /D `"NO_STRING_T`" /D `"CLIENT_DLL`" /D `"VECTOR`" /D `"VERSION_SAFE_STEAM_API_INTERFACES`" /D `"PROTECTED_THINGS_ENABLE`" /D `"strncpy=use_Q_strncpy_instead`" /D `"_snprintf=use_Q_snprintf_instead`" /D `"fopen=dont_use_fopen`" /D `"NEO`" /D `"HL2MP`" /D `"HL2_CLIENT_DLL`" /D `"_EXTERNAL_DLL_EXT=.dll`" /D `"VPCGAMECAPS=HL2MP`" /D `"PROJECTDIR=${env:GITHUB_WORKSPACE}\mp\src\game\client`" /D `"SOURCE1=1`" /D `"VPCGAME=hl2mp`" /errorReport:prompt /GF /WX /Zc:forScope /GR /arch:SSE /Gd /Oy- /Oi /MT /FC /Fa`".\Release_neo\/`" /nologo /Fo`".\Release_neo\/`" /Ot /Fp`".\Release_neo\/client.pch`""
-        #
-        # If the compiler binary doesn't exist, the VS setup has most likely failed in a previous runner step.
-        # & "${env:MSBUILD_BIN}" ${options} .\everything.sln
+        # If the devenv binary doesn't exist, the VS setup has most likely failed in a previous runner step.
+        & "${env:DEVENV_COM}" .\everything.sln /Build Release|Win32 /Out $compileErrLog
         
-        & "${env:DEVENV_COM}" .\everything.sln /Build Release /Out compile_errors.log
-        
-        if (Test-Path -Path ".\compile_errors.log") {
-          Get-Content ".\compile_errors.log"
-          throw "Encountered compile error"
+        if (Test-Path -Path ".\${compileErrLog}") {
+          echo "Compile error log was found; dumping:"
+          Get-Content ".\${compileErrLog}"
+          throw "Encountered compile error(s)"
         }
+        echo "Post-compile"
         
         echo "`nListing build products:"
         cd "${env:GITHUB_WORKSPACE}\mp\game\neo"
