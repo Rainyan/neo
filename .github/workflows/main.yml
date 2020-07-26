@@ -674,7 +674,7 @@ jobs:
         $compileErrLog = "compile_errors.log"
         
         # If the devenv binary doesn't exist, the VS setup has most likely failed in a previous runner step.
-        & "${env:DEVENV_COM}" .\everything.sln /Build Release|Win32 /Out $compileErrLog
+        & "${env:DEVENV_COM}" .\everything.sln /Build Release`|Win32 /Out $compileErrLog
         
         if (Test-Path -Path ".\${compileErrLog}") {
           echo "Compile error log was found; dumping:"
