@@ -115,7 +115,7 @@ jobs:
         git apply ".\${env:SPEECH_SDK_PATCH_FILE}"
         
         echo "Symlinking ${env:SPEECH_SDK_PRODUCT_NAME} includes"
-        mklink /j ".\sapi51" "${env:SPEECH_SDK_INSTALL_LOCATION}"
+        New-Item -ItemType Junction -Path . -Name "sapi51" -Target "${env:SPEECH_SDK_INSTALL_LOCATION}"
         
     - name: Install Microsoft Visual Studio Community 2013 with Update 5 and MFC
       env:
