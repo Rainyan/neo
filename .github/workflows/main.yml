@@ -294,7 +294,7 @@ jobs:
         $numFails = 0
         # Try at most this many times with the above intervals, then give up and throw error.
         # Set to 0 to never give up (possible to go infinitely idle on installer failure state, bar runner timeout).
-        $maxFails = 10
+        $maxFails = 20
         Do {
           # Get the actual hashes we currently have.
           $compare = @()
