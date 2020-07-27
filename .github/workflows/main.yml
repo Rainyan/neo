@@ -660,7 +660,7 @@ jobs:
         }
         echo "Installer finished"
         
-    - uses: microsoft/setup-msbuild@v1
+    # - uses: microsoft/setup-msbuild@v1
     - name: Build all
       env:
         DEVENV_COM: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com
@@ -675,18 +675,18 @@ jobs:
         # "ERROR: Unable to find RegKey for .vcproj or .vcxproj files in solutions."
         & ".\createallprojects.bat"
       
-        $compileErrLog = "compile_errors.log"
+        $compileLog = "msbuild.log"
         
         # If the devenv binary doesn't exist, the VS setup has most likely failed in a previous runner step.
         # & "${env:DEVENV_COM}" .\everything.sln /Build Release`|Win32 /Out $compileErrLog
         
-        & "${env:MSBUILD_BIN}" .\everything.sln /nologo /fileLogger /detailedSummary /property:Configuration=Release /target:"Clean;Build" /verbosity:detailed
+        & "${env:MSBUILD_BIN}" .\everything.sln /nologo /fileLogger /detailedSummary /property:Configuration=Release /target:Build /verbosity:detailed
         
-        # if (Test-Path -Path ".\${compileErrLog}") {
-        #   echo "Compile error log was found; dumping:"
-        #   Get-Content ".\${compileErrLog}"
-        #   throw "Encountered compile error(s)"
-        # }
+        if (-Not(Test-Path -Path ".\${compileLog}")) {
+          throw "Compile log was not found"
+        }
+        Get-Content ".\${compileLog}"
+        
         echo "Post-compile"
         
         echo "`nListing build products:"
