@@ -129,7 +129,7 @@ jobs:
     - name: Build
       run: |
         msbuild mp\src\everything.sln /m /nologo /p:Configuration=Release /t:"Clean;Build" /v:m
-        cd .\mp\src
+        cd .\mp\game\neo
         ls
         
         
