@@ -680,7 +680,7 @@ jobs:
         # If the devenv binary doesn't exist, the VS setup has most likely failed in a previous runner step.
         # & "${env:DEVENV_COM}" .\everything.sln /Build Release`|Win32 /Out $compileErrLog
         
-        & "${env:MSBUILD_BIN}" .\everything.sln /nologo /fileLogger /detailedSummary /toolsVersion:2.0 /property:Configuration=Release /target:Build /verbosity:detailed
+        & "${env:MSBUILD_BIN}" .\everything.sln /nologo /fileLogger /detailedSummary /toolsVersion:4.0 /property:Configuration=`"Release`|Win32`" /target:Build /verbosity:detailed
         
         if (-Not(Test-Path -Path ".\${compileLog}")) {
           throw "Compile log was not found"
