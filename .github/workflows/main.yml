@@ -14,6 +14,8 @@ jobs:
         os: [ windows-latest ]
 
     runs-on: ${{ matrix.os }}
+    env:
+      POWERSHELL_TELEMETRY_OPTOUT: 1
     
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -124,7 +126,7 @@ jobs:
         PRODUCT_FULL_NAME: Microsoft Visual Studio Community 2013 with Update 5
         PRODUCT_BASE_INSTALL_PATH: C:\Program Files (x86)\MSBuild\12.0\Bin
       run: |
-        if (0) { echo "Skipping step."; return }
+        if (1) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -429,7 +431,7 @@ jobs:
         PRODUCT_BASE_DLL_INSTALL_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\redist\x86\Microsoft.VC120.MFC
         PRODUCT_BASE_EXE_INSTALL_PATH: C:\ProgramData\Package Cache\{91501789-1ec3-422d-9043-b1065a88d603}
       run: |
-        if (0) { echo "Skipping step."; return }
+        if (1) { echo "Skipping step."; return }
         
         echo("Downloading ${env:PRODUCT_FULL_NAME}")
         mkdir ".\${env:PRODUCT_NAME_BASE}_files"
@@ -663,7 +665,7 @@ jobs:
         DEVENV_COM: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com
         MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
       run: |
-        if (0) { echo "Skipping step."; return }
+        if (1) { echo "Skipping step."; return }
         
         # Need to cd here because the batch script calls tools relative to this dir position.
         cd "${env:GITHUB_WORKSPACE}\mp\src"
@@ -686,6 +688,17 @@ jobs:
         # }
         echo "Post-compile"
         
+        echo "`nListing build products:"
+        cd "${env:GITHUB_WORKSPACE}\mp\game\neo"
+        ls
+        cd ".\bin"
+        ls
+        
+    - uses: microsoft/setup-msbuild@v1
+    - name: Build
+      run: |
+        cd "${env:GITHUB_WORKSPACE}\mp\src"
+        msbuild everything.sln /m /nologo /p:Configuration=Release /t:"Clean;Build"
         echo "`nListing build products:"
         cd "${env:GITHUB_WORKSPACE}\mp\game\neo"
         ls
