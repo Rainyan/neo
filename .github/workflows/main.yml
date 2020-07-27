@@ -697,7 +697,13 @@ jobs:
     - uses: microsoft/setup-msbuild@v1
     - name: Build
       run: |
+        # Need to cd here because the batch script calls tools relative to this dir position.
         cd "${env:GITHUB_WORKSPACE}\mp\src"
+        
+        # If we fail with the following error message, VS setup has most likely failed in a previous runner step:
+        # "ERROR: Unable to find RegKey for .vcproj or .vcxproj files in solutions."
+        & ".\createallprojects.bat"
+        
         msbuild everything.sln /m /nologo /p:Configuration=Release /t:"Clean;Build"
         echo "`nListing build products:"
         cd "${env:GITHUB_WORKSPACE}\mp\game\neo"
