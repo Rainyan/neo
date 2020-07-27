@@ -697,6 +697,10 @@ jobs:
     - uses: microsoft/setup-msbuild@v1
     - name: Build
       run: |
+        $projTypeGuidVisualCpp = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942"
+        $projRegPath = "HKLM\SOFTWARE\WOW6432Node\Microsoft\VisualStudio\10.0\Projects\${projTypeGuidVisualCpp}"
+        REG ADD "${projRegPath}" /v DefaultProjectExtension /t REG_SZ /d vcproj /f
+        
         # Need to cd here because the batch script calls tools relative to this dir position.
         cd "${env:GITHUB_WORKSPACE}\mp\src"
         
