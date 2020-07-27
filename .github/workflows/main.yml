@@ -661,6 +661,7 @@ jobs:
     - name: Build all
       env:
         DEVENV_COM: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\IDE\devenv.com
+        MSBUILD_BIN: C:\Program Files (x86)\MSBuild\12.0\Bin\MSBuild.exe
       run: |
         if (0) { echo "Skipping step."; return }
         
@@ -674,13 +675,15 @@ jobs:
         $compileErrLog = "compile_errors.log"
         
         # If the devenv binary doesn't exist, the VS setup has most likely failed in a previous runner step.
-        & "${env:DEVENV_COM}" .\everything.sln /Build Release`|Win32 /Out $compileErrLog
+        # & "${env:DEVENV_COM}" .\everything.sln /Build Release`|Win32 /Out $compileErrLog
         
-        if (Test-Path -Path ".\${compileErrLog}") {
-          echo "Compile error log was found; dumping:"
-          Get-Content ".\${compileErrLog}"
-          throw "Encountered compile error(s)"
-        }
+        & "${env:MSBUILD_BIN}" .\everything.sln /nologo /property:Configuration=Release /target:"Clean;Build" /verbosity:detailed
+        
+        # if (Test-Path -Path ".\${compileErrLog}") {
+        #   echo "Compile error log was found; dumping:"
+        #   Get-Content ".\${compileErrLog}"
+        #   throw "Encountered compile error(s)"
+        # }
         echo "Post-compile"
         
         echo "`nListing build products:"
