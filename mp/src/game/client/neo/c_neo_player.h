@@ -12,8 +12,8 @@ class C_NEO_Player;
 #include "neo_player_shared.h"
 
 class C_NEOPredictedViewModel;
-
 class CNeoHudElements;
+class INEOPlayerAnimState;
 
 class C_NEO_Player : public C_HL2MP_Player
 {
@@ -75,15 +75,15 @@ public:
 
 	void AddNeoFlag(int flags)
 	{
-		m_fNeoFlags = (m_fNeoFlags | flags);
+		m_NeoFlags = (GetNeoFlags() | flags);
 	}
 
 	void RemoveNeoFlag(int flags)
 	{
-		m_fNeoFlags = (m_fNeoFlags & ~flags);
+		m_NeoFlags = (GetNeoFlags() & ~flags);
 	}
 
-	int GetNeoFlags() const { return m_fNeoFlags; }
+	int GetNeoFlags() const { return m_NeoFlags; }
 
 	virtual const Vector GetPlayerMaxs(void) const;
 
@@ -113,6 +113,8 @@ public:
 	float GetCrouchSpeed(void) const;
 	float GetWalkSpeed(void) const;
 	float GetSprintSpeed(void) const;
+
+	virtual void SetAnimation(PLAYER_ANIM playerAnim) OVERRIDE;
 
 private:
 	float GetActiveWeaponSpeedScale() const;
@@ -191,7 +193,7 @@ public:
 	CNetworkVar(int, m_iNeoClass);
 	CNetworkVar(int, m_iNeoSkin);
 
-	CNetworkVar(int, m_fNeoFlags);
+	unsigned char m_NeoFlags;
 
 protected:
 	bool m_bIsClassMenuOpen, m_bIsTeamMenuOpen;
@@ -203,6 +205,8 @@ private:
 	bool m_bIsAllowedToToggleVision;
 
 	CNeoHudElements *m_pNeoPanel;
+
+	INEOPlayerAnimState* m_pPlayerAnimState;
 
 	float m_flLastAirborneJumpOkTime;
 	float m_flLastSuperJumpTime;

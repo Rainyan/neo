@@ -1602,7 +1602,7 @@ bool CNEORules::FPlayerCanRespawn(CBasePlayer* pPlayer)
 
 void CNEORules::SetRoundStatus(NeoRoundStatus status)
 {
-	if (status == NeoRoundStatus::RoundLive)
+	if (status == NeoRoundStatus::RoundLive || status == NeoRoundStatus::Idle)
 	{
 		for (int i = 1; i <= gpGlobals->maxClients; ++i)
 		{
@@ -1614,7 +1614,10 @@ void CNEORules::SetRoundStatus(NeoRoundStatus status)
 			}
 		}
 #ifdef GAME_DLL
-		UTIL_CenterPrintAll("GO GO GO\n"); // NEO TODO (Rain): correct phrase
+		if (status == NeoRoundStatus::RoundLive)
+		{
+			UTIL_CenterPrintAll("GO GO GO\n"); // NEO TODO (Rain): correct phrase
+		}
 #endif
 	}
 

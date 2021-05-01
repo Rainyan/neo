@@ -44,6 +44,8 @@
 
 #include "model_types.h"
 
+#include "neo_playeranimstate.h"
+
 // Don't alias here
 #if defined( CNEO_Player )
 #undef CNEO_Player	
@@ -77,7 +79,7 @@ IMPLEMENT_CLIENTCLASS_DT(C_NEO_Player, DT_NEO_Player, CNEO_Player)
 
 	RecvPropArray(RecvPropVector(RECVINFO(m_rvFriendlyPlayerPositions[0])), m_rvFriendlyPlayerPositions),
 
-	RecvPropInt(RECVINFO(m_fNeoFlags)),
+	RecvPropInt(RECVINFO(m_NeoFlags)),
 END_RECV_TABLE()
 
 BEGIN_PREDICTION_DATA(C_NEO_Player)
@@ -93,8 +95,6 @@ BEGIN_PREDICTION_DATA(C_NEO_Player)
 	DEFINE_PRED_FIELD(m_bHasBeenAirborneForTooLongToSuperJump, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE),
 
 	DEFINE_PRED_FIELD(m_nVisionLastTick, FIELD_INTEGER, FTYPEDESC_INSENDTABLE),
-
-	DEFINE_PRED_FIELD(m_fNeoFlags, FIELD_INTEGER, FTYPEDESC_INSENDTABLE),
 END_PREDICTION_DATA()
 
 ConVar cl_drawhud_quickinfo("cl_drawhud_quickinfo", "0", 0,
@@ -336,10 +336,14 @@ C_NEO_Player::C_NEO_Player()
 	m_bPreviouslyPreparingToHideMsg = false;
 	m_bLastTickInThermOpticCamo = false;
 	m_bIsAllowedToToggleVision = false;
+
+	m_pPlayerAnimState = CreatePlayerAnimState(this, CreateAnimStateHelpers(this),
+		NEO_ANIMSTATE_LEGANIM_TYPE, NEO_ANIMSTATE_USES_AIMSEQUENCES);
 }
 
 C_NEO_Player::~C_NEO_Player()
 {
+	m_pPlayerAnimState->Release();
 }
 
 void C_NEO_Player::CheckThermOpticButtons()
@@ -893,6 +897,11 @@ void C_NEO_Player::PostThink(void)
 			m_bPreviouslyReloading = pWep->m_bInReload;
 		}
 	}
+
+	Vector eyeForward;
+	this->EyeVectors(&eyeForward, NULL, NULL);
+	Assert(eyeForward.IsValid());
+	m_pPlayerAnimState->Update(eyeForward[YAW], eyeForward[PITCH]);
 }
 
 bool C_NEO_Player::IsAllowedToSuperJump(void)
@@ -1284,4 +1293,17 @@ void C_NEO_Player::PreDataUpdate(DataUpdateType_t updateType)
 	}
 
 	BaseClass::PreDataUpdate(updateType);
+}
+
+void C_NEO_Player::SetAnimation(PLAYER_ANIM playerAnim)
+{
+	PlayerAnimEvent_t animEvent;
+	if (!PlayerAnimToPlayerAnimEvent(playerAnim, animEvent))
+	{
+		DevWarning("CLI Tried to get unknown PLAYER_ANIM %d\n", playerAnim);
+	}
+	else
+	{
+		m_pPlayerAnimState->DoAnimationEvent(animEvent);
+	}
 }
